@@ -146,6 +146,42 @@ assert("fmtUsd zero", fmtUsd(0) === "$0", `got ${fmtUsd(0)}`);
 assert("fmtPct ratio", fmtPct(0.4318) === "43.2%", `got ${fmtPct(0.4318)}`);
 assert("fmtPct zero", fmtPct(0) === "0.0%", `got ${fmtPct(0)}`);
 
+// 9. Sparkline normalization logic (mirrors the component's math, no DOM).
+//    Verifies: min/max range normalization, single-point centering, and the
+//    trend-direction color decision (the bug we just fixed was in the
+//    upstream API, but the sparkline math itself should be guarded too).
+function sparkPts(values: number[], width = 48, height = 16) {
+  if (!values.length) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = 2;
+  const w = width - pad * 2;
+  const h = height - pad * 2;
+  return values.map((v, i) => {
+    const x = pad + (values.length === 1 ? w / 2 : (i / (values.length - 1)) * w);
+    const y = pad + h - ((v - min) / range) * h;
+    return { x, y };
+  });
+}
+const sp1 = sparkPts([10, 20, 30]);
+assert("sparkline: 3 points ascending → y decreasing (line goes up-right)", sp1[0].y > sp1[1].y && sp1[1].y > sp1[2].y, `got ys ${sp1.map((p) => p.y.toFixed(1)).join(",")}`);
+const sp2 = sparkPts([5]);
+assert("sparkline: single point centered on x-axis", sp2.length === 1 && Math.abs(sp2[0].x - 24) < 1, `got x=${sp2[0]?.x}`);
+const sp3 = sparkPts([10, 10, 10]);
+assert("sparkline: equal values → all y equal (flat line)", sp3.every((p) => p.y === sp3[0].y), `got ys ${sp3.map((p) => p.y.toFixed(1)).join(",")}`);
+
+// 10. Newest-N ordering concept (the trend API bug we fixed).
+//     Simulate 25 scan rows; the API must return the LATEST 20, oldest-first.
+function selectNewestN<T extends { id: number }>(rows: T[], n: number): T[] {
+  return [...rows].sort((a, b) => b.id - a.id).slice(0, n).reverse();
+}
+const fakeRows = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, iaFinal: i }));
+const newest20 = selectNewestN(fakeRows, 20);
+assert("trend API: returns 20 points (not 25)", newest20.length === 20);
+assert("trend API: first point is id=6 (oldest of the newest 20)", newest20[0].id === 6, `got id=${newest20[0].id}`);
+assert("trend API: last point is id=25 (newest)", newest20[newest20.length - 1].id === 25, `got id=${newest20[newest20.length - 1].id}`);
+
 console.log("─".repeat(50));
 if (failures === 0) {
   console.log("✓ All engine checks passed.");

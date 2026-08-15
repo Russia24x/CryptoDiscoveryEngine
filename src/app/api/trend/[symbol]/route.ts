@@ -20,11 +20,14 @@ export async function GET(
       return NextResponse.json({ error: "not_found", points: [] }, { status: 404 });
     }
 
-    // Most recent N scan rows for this project, oldest-first for charting.
+    // Most recent N scan rows for this project. Query descending (newest
+    // first) + take, then reverse so the chart renders oldest→newest.
+    // (orderBy asc + take would return the OLDEST N, freezing the sparkline
+    //  once >N scans accumulate — a subtle bug.)
     const LIMIT = 20;
     const rows = await db.scanRow.findMany({
       where: { projectId: project.id },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
       take: LIMIT,
       select: {
         iaFinal: true,
@@ -37,6 +40,7 @@ export async function GET(
     });
 
     const points = rows
+      .reverse() // oldest-first for charting
       .filter((r) => r.iaFinal !== null)
       .map((r) => ({
         t: r.scan?.finishedAt ?? null,

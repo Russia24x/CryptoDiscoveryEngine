@@ -45,7 +45,6 @@ export function Sparkline({
     const y = pad + h - ((v - min) / range) * h;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
-  const d = `M ${pts.join(" L ")}`;
 
   // trend color: up = emerald, down = red, flat = muted
   const trend = values.length >= 2 ? values[values.length - 1] - values[0] : 0;
