@@ -209,6 +209,14 @@ const lowRevRevCond = lowRevThesis.mustStayTrue.find((c) => c.label.includes("Re
 assert("Thesis revenue condition can FAIL (non-tautological)", lowRevRevCond?.met === false, `expected met=false for PR<$1M, got met=${lowRevRevCond?.met}`);
 assert("Thesis with low revenue → status < 100%", lowRevThesis.statusPct < 100, `expected <100% with a failed condition, got ${lowRevThesis.statusPct}%`);
 
+// 13. Ranking competition ties — two assets with identical scores must share rank.
+const { rankResults } = await import("../src/engine/ranking");
+const rankTieA = { ...result, symbol: "RTIE_A", iaRaw: 50, iaEffective: 50, iaFinal: 50 };
+const rankTieB = { ...result, symbol: "RTIE_B", iaRaw: 50, iaEffective: 50, iaFinal: 50 };
+const rankTieRanked = rankResults([rankTieA, rankTieB]);
+assert("Ranking: tied assets share rankMkt=1", rankTieRanked[0].rankMkt === 1 && rankTieRanked[1].rankMkt === 1, `got ${rankTieRanked[0].rankMkt}, ${rankTieRanked[1].rankMkt}`);
+assert("Ranking: tied assets share rankFund=1", rankTieRanked[0].rankFund === 1 && rankTieRanked[1].rankFund === 1, `got ${rankTieRanked[0].rankFund}, ${rankTieRanked[1].rankFund}`);
+
 console.log("─".repeat(50));
 if (failures === 0) {
   console.log("✓ All engine checks passed.");
