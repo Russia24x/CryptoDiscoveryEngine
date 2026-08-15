@@ -63,7 +63,7 @@ export function AppShell() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
               >
-                <FeedsView />
+                <FeedsView onGoToSettings={() => setView("settings")} />
               </motion.div>
             )}
             {view === "settings" && (

@@ -230,6 +230,14 @@
     "kind": "Type",
     "address": "Address",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "sourcesHint": "Add and manage sources in Settings.",
+    "refresh": "Refresh",
+    "refreshHint": "Click Refresh to fetch the latest items from your configured sources.",
+    "itemsCount": "{count} recent items",
+    "openOriginal": "Open original",
+    "ingestedCount": "{count} new items ingested",
+    "ingestedNone": "No new items found (sources may be up-to-date or unreachable).",
+    "ingestFailed": "Ingestion failed"
   }
 }
