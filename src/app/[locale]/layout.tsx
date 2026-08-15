@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
 import "../globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
@@ -19,6 +19,15 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+});
+
+// Vazirmatn — high-quality Persian/Arabic font. Loaded always (small subset)
+// and applied via CSS for [dir="rtl"] in globals.css. Without this, Persian
+// text fell back to Tahoma/system fonts.
+const vazirmatn = Vazirmatn({
+  variable: "--font-vazirmatn",
+  subsets: ["arabic", "latin"],
   display: "swap",
 });
 
@@ -59,7 +68,7 @@ export default async function LocaleLayout({
       lang={locale}
       dir={dir}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${vazirmatn.variable}`}
     >
       <body className="antialiased bg-background text-foreground min-h-screen flex flex-col">
         <ThemeProvider

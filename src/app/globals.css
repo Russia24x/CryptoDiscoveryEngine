@@ -132,9 +132,9 @@
     font-feature-settings: "ss01", "cv01", "cv02";
     text-rendering: optimizeLegibility;
   }
-  /* RTL tweaks */
+  /* RTL tweaks — use Vazirmatn (loaded via next/font) for Persian */
   [dir="rtl"] {
-    font-family: var(--font-geist-sans), "Vazirmatn", "Tahoma", sans-serif;
+    font-family: var(--font-vazirmatn), var(--font-geist-sans), "Tahoma", sans-serif;
   }
   /* Custom scrollbar */
   .scroll-thin {
