@@ -245,6 +245,14 @@
     "by": "توسط",
     "collapse": "نمایش کمتر",
     "expand": "نمایش بیشتر",
-    "noMedia": "بدون رسانه"
+    "noMedia": "بدون رسانه",
+    "all": "همه",
+    "listView": "لیست",
+    "gridView": "شبکه‌ای",
+    "compactView": "فشرده",
+    "sortBy": "مرتب‌سازی بر اساس",
+    "sortNewest": "جدیدترین",
+    "sortOldest": "قدیمی‌ترین",
+    "noItemsForFilter": "موردی برای این فیلتر وجود ندارد."
   }
 }

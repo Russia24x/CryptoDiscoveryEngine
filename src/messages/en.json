@@ -245,6 +245,14 @@
     "by": "by",
     "collapse": "Show less",
     "expand": "Show more",
-    "noMedia": "No media"
+    "noMedia": "No media",
+    "all": "All",
+    "listView": "List",
+    "gridView": "Grid",
+    "compactView": "Compact",
+    "sortBy": "Sort by",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
+    "noItemsForFilter": "No items for this filter."
   }
 }

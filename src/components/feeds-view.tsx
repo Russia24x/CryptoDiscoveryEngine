@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -25,6 +26,10 @@ import {
   Video,
   ImageIcon,
   Maximize2,
+  ArrowUpDown,
+  List,
+  LayoutGrid,
+  Rows3,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { toast } from "sonner";
@@ -89,6 +94,9 @@ function timeAgo(iso: string): string {
 export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
   const t = useTranslations();
   const qc = useQueryClient();
+  const [filter, setFilter] = useState<"all" | "telegram" | "x" | "rss">("all");
+  const [viewMode, setViewMode] = useState<"list" | "grid" | "compact">("list");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   const { data: feedData, isLoading: sourcesLoading } = useQuery<{ sources: FeedSource[] }>({
     queryKey: ["feeds"],
@@ -102,7 +110,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
   const { data: itemsData, isLoading: itemsLoading } = useQuery<{ items: FeedItem[] }>({
     queryKey: ["feed-items"],
     queryFn: async () => {
-      const r = await fetch("/api/feeds/items?limit=50");
+      const r = await fetch("/api/feeds/items?limit=100");
       if (!r.ok) throw new Error("failed");
       return r.json();
     },
@@ -141,7 +149,27 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
   });
 
   const sources = feedData?.sources ?? [];
-  const items = itemsData?.items ?? [];
+  const allItems = itemsData?.items ?? [];
+
+  // Filter by source kind + sort by order
+  const items = useMemo(() => {
+    let filtered = allItems;
+    if (filter !== "all") {
+      filtered = allItems.filter((i) => i.source.kind === filter);
+    }
+    const sorted = [...filtered].sort((a, b) => {
+      const aT = new Date(a.publishedAt).getTime();
+      const bT = new Date(b.publishedAt).getTime();
+      return sortOrder === "newest" ? bT - aT : aT - bT;
+    });
+    return sorted;
+  }, [allItems, filter, sortOrder]);
+
+  // Available filter tabs (only show types that have sources)
+  const availableKinds = useMemo(
+    () => new Set(sources.map((s) => s.kind)),
+    [sources],
+  );
 
   return (
     <div className="space-y-6">
@@ -253,15 +281,94 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
       {/* Recent Items */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Inbox className="h-4 w-4 text-primary" />
-            {t("feedsView.items")}
-          </CardTitle>
-          <CardDescription>
-            {items.length > 0
-              ? t("feedsView.itemsCount", { count: items.length })
-              : t("feedsView.ingestionPending")}
-          </CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-primary" />
+                {t("feedsView.items")}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {items.length > 0
+                  ? t("feedsView.itemsCount", { count: items.length })
+                  : t("feedsView.ingestionPending")}
+              </CardDescription>
+            </div>
+
+            {/* Filter tabs + view mode toggle + sort */}
+            {allItems.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Filter tabs */}
+                <div className="inline-flex rounded-lg border border-border/60 bg-muted/40 p-0.5 gap-0.5">
+                  <FilterTab
+                    active={filter === "all"}
+                    onClick={() => setFilter("all")}
+                    label={t("feedsView.all")}
+                    count={allItems.length}
+                  />
+                  {availableKinds.has("telegram") && (
+                    <FilterTab
+                      active={filter === "telegram"}
+                      onClick={() => setFilter("telegram")}
+                      label={t("settings.feedTelegram")}
+                      icon={<Send className="h-3 w-3" />}
+                      count={allItems.filter((i) => i.source.kind === "telegram").length}
+                    />
+                  )}
+                  {availableKinds.has("x") && (
+                    <FilterTab
+                      active={filter === "x"}
+                      onClick={() => setFilter("x")}
+                      label={t("settings.feedX")}
+                      icon={<Twitter className="h-3 w-3" />}
+                      count={allItems.filter((i) => i.source.kind === "x").length}
+                    />
+                  )}
+                  {availableKinds.has("rss") && (
+                    <FilterTab
+                      active={filter === "rss"}
+                      onClick={() => setFilter("rss")}
+                      label={t("settings.feedRss")}
+                      icon={<Rss className="h-3 w-3" />}
+                      count={allItems.filter((i) => i.source.kind === "rss").length}
+                    />
+                  )}
+                </div>
+
+                {/* Sort */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={() => setSortOrder((s) => (s === "newest" ? "oldest" : "newest"))}
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  {sortOrder === "newest" ? t("feedsView.sortNewest") : t("feedsView.sortOldest")}
+                </Button>
+
+                {/* View mode toggle */}
+                <div className="inline-flex rounded-lg border border-border/60 bg-muted/40 p-0.5 gap-0.5">
+                  <ViewModeBtn
+                    active={viewMode === "list"}
+                    onClick={() => setViewMode("list")}
+                    icon={<List className="h-3.5 w-3.5" />}
+                    label={t("feedsView.listView")}
+                  />
+                  <ViewModeBtn
+                    active={viewMode === "grid"}
+                    onClick={() => setViewMode("grid")}
+                    icon={<LayoutGrid className="h-3.5 w-3.5" />}
+                    label={t("feedsView.gridView")}
+                  />
+                  <ViewModeBtn
+                    active={viewMode === "compact"}
+                    onClick={() => setViewMode("compact")}
+                    icon={<Rows3 className="h-3.5 w-3.5" />}
+                    label={t("feedsView.compactView")}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {itemsLoading ? (
@@ -278,7 +385,11 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
                 </div>
               </div>
               <div className="space-y-1 max-w-md">
-                <p className="text-sm font-medium">{t("feedsView.noItems")}</p>
+                <p className="text-sm font-medium">
+                  {filter !== "all" && allItems.length > 0
+                    ? t("feedsView.noItemsForFilter")
+                    : t("feedsView.noItems")}
+                </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {t("feedsView.refreshHint")}
                 </p>
@@ -297,13 +408,27 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
               </div>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[700px] overflow-y-auto scroll-thin pe-1">
+            <div
+              className={cn(
+                "max-h-[700px] overflow-y-auto scroll-thin pe-1",
+                viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                  : viewMode === "compact"
+                    ? "space-y-1"
+                    : "space-y-2",
+              )}
+            >
               {items.map((item) => {
                 const images = item.mediaUrls
                   ? item.mediaUrls.split(",").filter(Boolean)
                   : [];
                 return (
-                  <FeedItemCard key={item.id} item={item} images={images} />
+                  <FeedItemCard
+                    key={item.id}
+                    item={item}
+                    images={images}
+                    viewMode={viewMode}
+                  />
                 );
               })}
             </div>
@@ -319,63 +444,97 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
 function FeedItemCard({
   item,
   images,
+  viewMode = "list",
 }: {
   item: FeedItem;
   images: string[];
+  viewMode?: "list" | "grid" | "compact";
 }) {
   const t = useTranslations();
   const hasMedia = images.length > 0 || item.hasVideo;
 
   return (
     <Dialog>
-      <div className="rounded-lg border border-border/60 bg-card/60 overflow-hidden hover:bg-muted/30 transition-colors">
-        {/* Media preview (first image) */}
-        {images.length > 0 && (
-          <div className="relative w-full aspect-video bg-muted overflow-hidden">
-            <img
-              src={images[0]}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            {images.length > 1 && (
-              <span className="absolute top-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
-                <ImageIcon className="h-3 w-3" />
-                {images.length}
-              </span>
-            )}
-            {item.hasVideo && (
-              <span className="absolute top-2 start-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
-                <Video className="h-3 w-3" />
-                {t("feedsView.hasVideo")}
-              </span>
-            )}
+      {/* COMPACT mode — single row, no image */}
+      {viewMode === "compact" ? (
+        <div className="flex items-center gap-2 rounded-md border border-border/40 bg-card/40 px-2.5 py-1.5 hover:bg-muted/30 transition-colors">
+          <div className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border", feedIconColor(item.source.kind))}>
+            <FeedIcon kind={item.source.kind} className="h-2.5 w-2.5" />
           </div>
-        )}
-        {images.length === 0 && item.hasVideo && (
-          <div className="relative w-full aspect-video bg-muted flex items-center justify-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/50">
-              <Video className="h-6 w-6 text-white" />
+          <span className="text-xs font-semibold shrink-0">{item.source.name}</span>
+          <p className="text-xs text-muted-foreground truncate flex-1">{item.title}</p>
+          {images.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground shrink-0">
+              <ImageIcon className="h-3 w-3" />{images.length}
+            </span>
+          )}
+          {item.hasVideo && <Video className="h-3 w-3 text-muted-foreground shrink-0" />}
+          <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(item.publishedAt)}</span>
+          <DialogTrigger asChild>
+            <button className="text-primary hover:underline text-[11px] shrink-0">
+              <Maximize2 className="h-3 w-3" />
+            </button>
+          </DialogTrigger>
+        </div>
+      ) : (
+        /* LIST / GRID mode — card with image + content */
+        <div className={cn(
+          "rounded-lg border border-border/60 bg-card/60 overflow-hidden hover:bg-muted/30 transition-colors",
+          viewMode === "grid" && "flex flex-col h-full",
+        )}>
+          {/* Media preview (first image) */}
+          {images.length > 0 && (
+            <div className={cn(
+              "relative w-full bg-muted overflow-hidden",
+              viewMode === "grid" ? "aspect-square" : "aspect-video",
+            )}>
+              <img
+                src={images[0]}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              {images.length > 1 && (
+                <span className="absolute top-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                  <ImageIcon className="h-3 w-3" />
+                  {images.length}
+                </span>
+              )}
+              {item.hasVideo && (
+                <span className="absolute top-2 start-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                  <Video className="h-3 w-3" />
+                  {t("feedsView.hasVideo")}
+                </span>
+              )}
             </div>
-          </div>
-        )}
+          )}
+          {images.length === 0 && item.hasVideo && (
+            <div className={cn(
+              "relative w-full bg-muted flex items-center justify-center",
+              viewMode === "grid" ? "aspect-square" : "aspect-video",
+            )}>
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/50">
+                <Video className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          )}
 
-        {/* Content */}
-        <div className="p-3">
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
-              <FeedIcon kind={item.source.kind} className="h-3 w-3" />
+          {/* Content */}
+          <div className="p-3 flex-1">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
+                <FeedIcon kind={item.source.kind} className="h-3 w-3" />
+              </div>
+              <span className="text-xs font-semibold">{item.source.name}</span>
+              {item.authorName && item.authorName !== item.source.name && (
+                <span className="text-[10px] text-muted-foreground">
+                  · {t("feedsView.by")} {item.authorName}
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground ms-auto">{timeAgo(item.publishedAt)}</span>
             </div>
-            <span className="text-xs font-semibold">{item.source.name}</span>
-            {item.authorName && item.authorName !== item.source.name && (
-              <span className="text-[10px] text-muted-foreground">
-                · {t("feedsView.by")} {item.authorName}
-              </span>
-            )}
-            <span className="text-[10px] text-muted-foreground ms-auto">{timeAgo(item.publishedAt)}</span>
-          </div>
-          <p className="text-sm leading-snug line-clamp-3">{item.title}</p>
-          <div className="flex items-center gap-3 mt-2">
+            <p className={cn("text-sm leading-snug", viewMode === "grid" ? "line-clamp-2" : "line-clamp-3")}>{item.title}</p>
+            <div className="flex items-center gap-3 mt-2">
             <DialogTrigger asChild>
               <button className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
                 <Maximize2 className="h-3 w-3" />
@@ -396,6 +555,7 @@ function FeedItemCard({
           </div>
         </div>
       </div>
+      )}
 
       {/* Full-content dialog */}
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto scroll-thin">
@@ -473,5 +633,70 @@ function FeedItemCard({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Helper components ─────────────────────────────────────────────
+
+function FilterTab({
+  active,
+  onClick,
+  label,
+  icon,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  icon?: React.ReactNode;
+  count: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+      <span className={cn(
+        "text-[10px] rounded-full px-1.5 py-0.5",
+        active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+      )}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function ViewModeBtn({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "inline-flex items-center justify-center rounded-md px-2 py-1 transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {icon}
+    </button>
   );
 }

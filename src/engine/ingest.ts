@@ -127,10 +127,18 @@ export function parseTelegram(html: string): IngestedItem[] {
   // Split by message wrapper. Each block starts with a class attr.
   const messageBlocks = html.split(/class="tgme_widget_message /).slice(1);
   for (const block of messageBlocks.slice(0, 20)) {
-    // Extract full message text (don't truncate — keep full content)
+    // Extract FULL message text. The text div contains nested HTML (emoji
+    // <i> tags, <br/>, etc.) but NOT nested <div>s — the lazy `*?</div>`
+    // was truncating at the first closing tag. The message text section
+    // ends right before the next tgme_widget_message_* element (photo,
+    // video, link preview, footer, etc.), so we match to that boundary.
     const textMatch = block.match(
-      /class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<div class="tgme_widget_message_(?:photo|video|link|reply|footer|views|date|author|bubble|not_supported|service)/i,
     );
+    // Fallback: if no following section, match to end of bubble div
+    const rawText = textMatch
+      ? textMatch[1]
+      : (block.match(/class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i)?.[1] ?? "");
     // Extract datetime
     const timeMatch = block.match(/datetime="([^"]+)"/i);
     // Extract post link
@@ -151,20 +159,20 @@ export function parseTelegram(html: string): IngestedItem[] {
     // we know a video exists). The actual mp4 isn't exposed without the app.
     const hasVideo = /tgme_widget_message_video/.test(block);
 
-    const rawText = textMatch ? stripHtml(textMatch[1]) : "";
+    const fullText = stripHtml(rawText);
     // Skip if no text AND no media (pure system message or empty)
-    if (!rawText && mediaUrls.length === 0 && !hasVideo) continue;
+    if (!fullText && mediaUrls.length === 0 && !hasVideo) continue;
 
     const publishedAt = timeMatch ? new Date(timeMatch[1]) : new Date();
     if (isNaN(publishedAt.getTime())) continue;
 
     const url = linkMatch ? linkMatch[1] : undefined;
-    const externalId = url || `${publishedAt.getTime()}-${rawText.slice(0, 20)}`;
+    const externalId = url || `${publishedAt.getTime()}-${fullText.slice(0, 20)}`;
 
     items.push({
       externalId,
-      title: rawText.slice(0, 140) + (rawText.length > 140 ? "…" : ""),
-      body: rawText || undefined, // full text, no truncation
+      title: fullText.slice(0, 140) + (fullText.length > 140 ? "…" : ""),
+      body: fullText || undefined, // full text, no truncation
       url,
       publishedAt,
       mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
