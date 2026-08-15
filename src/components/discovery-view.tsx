@@ -70,8 +70,19 @@ export function DiscoveryView({
   });
 
   const rows = (data?.rows ?? []).slice().sort((a, b) => {
-    const av = (a as any)[sortKey] ?? 999;
-    const bv = (b as any)[sortKey] ?? 999;
+    // Type-safe sort value extraction — no `as any` casts.
+    const getValue = (r: RankedRow): number => {
+      switch (sortKey) {
+        case "rankMkt": return r.rankMkt;
+        case "rankFund": return r.rankFund;
+        case "rankEff": return r.rankEff;
+        case "rankConf": return r.rankConf;
+        case "iaFinal": return r.result.iaFinal;
+        case "iaRaw": return r.result.iaRaw;
+      }
+    };
+    const av = getValue(a) ?? 999;
+    const bv = getValue(b) ?? 999;
     return av - bv;
   });
 
@@ -122,7 +133,7 @@ export function DiscoveryView({
                 <label className="text-xs font-medium text-muted-foreground">
                   {t("discovery.scanMode")}
                 </label>
-                <Select value={mode} onValueChange={(v) => setMode(v as any)}>
+                <Select value={mode} onValueChange={(v) => setMode(v as "demo" | "live")}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
