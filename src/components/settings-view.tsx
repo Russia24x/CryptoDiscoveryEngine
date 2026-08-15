@@ -361,13 +361,16 @@ function AddProviderForm({ onDone }: { onDone: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, slug: form.name.toLowerCase().replace(/\s+/g, "-") }),
       });
-      return r.json();
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
       toast.success(t("settings.providerAdded"));
       onDone();
     },
+    onError: (e) => toast.error(`${t("settings.addFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   return (
