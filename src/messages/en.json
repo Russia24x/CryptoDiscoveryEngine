@@ -152,5 +152,38 @@
     "rights": "Crypto Investment Decision Engine",
     "evidenceOverNarrative": "Evidence > Narrative",
     "architectureLocked": "Architecture v2 — Locked"
+  },
+  "benchmark": {
+    "title": "Peer Benchmarking",
+    "subtitle": "How this asset ranks vs {count} peers on every metric.",
+    "relativeIA": "Relative Investment Attractiveness",
+    "relativeIAHint": "A weighted blend of peer percentiles — turns raw scores into decision-relevant peer context.",
+    "percentile": "Percentile",
+    "rank": "Rank",
+    "metric": "Metric",
+    "strengths": "Top Strengths",
+    "weaknesses": "Key Weaknesses",
+    "peerCount": "{count} peers",
+    "vsPeers": "vs peers",
+    "legendHigh": "higher = better",
+    "legendLow": "lower = better"
+  },
+  "compare": {
+    "title": "Asset Comparison",
+    "subtitle": "Select 2–5 assets to compare side-by-side across every metric.",
+    "selectAssets": "Select assets to compare",
+    "selected": "{count} selected",
+    "minHint": "Select at least 2 assets",
+    "maxHint": "Max 5 assets",
+    "runCompare": "Compare",
+    "metric": "Metric",
+    "winner": "Best",
+    "noData": "Run a comparison to see results.",
+    "clear": "Clear",
+    "relativeIA": "Rel. IA",
+    "iaRaw": "IA Raw",
+    "iaFinal": "IA Final",
+    "addFromScan": "Pick from scan results",
+    "compareCta": "Compare selected"
   }
 }

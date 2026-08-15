@@ -30,6 +30,7 @@ import type { RankedRow } from "@/engine/ranking";
 import type { EngineInputs, EngineResult } from "@/engine";
 import { cn, fmtUsd, fmtPct, fmtScore, barColor01, scoreColor01 } from "@/lib/format";
 import { DecisionBadge } from "./decision-badge";
+import { BenchmarkPanel } from "./benchmark-panel";
 
 interface DetailResp {
   input: EngineInputs;
@@ -374,6 +375,9 @@ export function DetailView({
               </div>
             </CardContent>
           </Card>
+
+          {/* Peer Benchmarking (V1.2) */}
+          <BenchmarkPanel symbol={row.symbol} />
         </>
       )}
     </div>

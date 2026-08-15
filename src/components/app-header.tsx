@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { Button } from "@/components/ui/button";
-import { Compass, Settings as SettingsIcon, Sparkles } from "lucide-react";
+import { Compass, Settings as SettingsIcon, Sparkles, GitCompare } from "lucide-react";
 import { cn } from "@/lib/format";
 import type { View } from "./app-shell";
 
@@ -49,6 +49,15 @@ export function AppHeader({
             >
               <Compass className="h-4 w-4" />
               <span className="hidden sm:inline">{t("nav.discovery")}</span>
+            </Button>
+            <Button
+              variant={view === "compare" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setView("compare")}
+              className={cn("gap-2", view === "compare" && "shadow-sm")}
+            >
+              <GitCompare className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("compare.title")}</span>
             </Button>
             <Button
               variant={view === "settings" ? "secondary" : "ghost"}

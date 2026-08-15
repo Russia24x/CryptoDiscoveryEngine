@@ -6,12 +6,13 @@ import { AppHeader } from "./app-header";
 import { AppFooter } from "./app-footer";
 import { DiscoveryView } from "./discovery-view";
 import { DetailView } from "./detail-view";
+import { ComparisonView } from "./comparison-view";
 import { SettingsView } from "./settings-view";
 import type { RankedRow } from "@/engine/ranking";
 import { AnimatePresence, motion } from "framer-motion";
 import { Compass, Settings as SettingsIcon, FileText } from "lucide-react";
 
-export type View = "discovery" | "settings";
+export type View = "discovery" | "compare" | "settings";
 
 export function AppShell() {
   const t = useTranslations();
@@ -40,6 +41,17 @@ export function AppShell() {
                 ) : (
                   <DiscoveryView onSelect={setSelected} />
                 )}
+              </motion.div>
+            )}
+            {view === "compare" && (
+              <motion.div
+                key="compare"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                <ComparisonView />
               </motion.div>
             )}
             {view === "settings" && (

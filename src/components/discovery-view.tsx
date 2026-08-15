@@ -67,6 +67,9 @@ export function DiscoveryView({
     return av - bv;
   });
 
+  // max IA final for relative bar scaling
+  const maxIAFinal = Math.max(...rows.map((r) => r.result.iaFinal), 1);
+
   return (
     <div className="space-y-6">
       {/* Hero */}
@@ -257,8 +260,25 @@ export function DiscoveryView({
                             {r.rankMkt}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono font-semibold">
-                          {fmtScore(r.result.iaFinal)}
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="font-mono font-semibold text-sm tabular-nums">
+                              {fmtScore(r.result.iaFinal)}
+                            </span>
+                            <div className="h-1 w-14 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-500",
+                                  r.result.iaFinal >= 28
+                                    ? "bg-emerald-500"
+                                    : r.result.iaFinal >= 20
+                                      ? "bg-amber-500"
+                                      : "bg-red-500",
+                                )}
+                                style={{ width: `${Math.max(4, (r.result.iaFinal / maxIAFinal) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-center">
                           {passed ? (
