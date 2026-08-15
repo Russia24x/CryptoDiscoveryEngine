@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { runEngine } from "@/engine";
 import { rankResults, type RankedRow } from "@/engine/ranking";
 import { demoAssets } from "@/providers/demo-data";
-import { ensureProvidersRegistered } from "@/providers/registry";
+import { listProviders } from "@/providers/registry";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -16,23 +16,35 @@ interface ScanResponse {
 }
 
 async function runLiveScan(): Promise<ScanResponse> {
-  ensureProvidersRegistered();
-  // Pull DeFiLlama + CoinGecko (best-effort). In sandbox these may be rate-limited;
-  // we gracefully fall back to demo if both fail.
   try {
-    const { defillamaProvider } = await import("@/providers/defillama");
-    const { coingeckoProvider } = await import("@/providers/coingecko");
+    // Use the provider registry — the canonical path. Any registered provider
+    // (free or key-based) is consulted; the architecture stays the same when
+    // paid providers are added later.
+    const providers = listProviders();
     const ctx = { fetch };
-    const [dl, cg] = await Promise.all([
-      defillamaProvider.listProtocols(ctx).catch(() => []),
-      coingeckoProvider.listProtocols(ctx).catch(() => []),
-    ]);
+    // Pull protocol lists from all available providers in parallel.
+    const lists = await Promise.all(
+      providers.map(async (p) =>
+        p.listProtocols(ctx).catch((err) => {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(`[scan] provider ${p.meta.slug} failed:`, err?.message ?? err);
+          }
+          return [];
+        }),
+      ),
+    );
+    const dl = lists[0] ?? []; // defillama (priority 10)
+    const cg = lists[1] ?? []; // coingecko (priority 20)
     if (!dl.length && !cg.length) {
       return { ...runDemoScan(), note: "Live APIs unreachable — demo data shown." };
     }
-    // build a merged map keyed by symbol
+    // build a merged map keyed by symbol. On collision, keep the first seen
+    // (DeFiLlama wins by priority) and log in dev so collisions are visible.
     const map = new Map<string, { symbol: string; name: string; category?: string; tvl?: number; fees24h?: number; revenue24h?: number; mc?: number; fdv?: number; coingeckoId?: string; defillamaSlug?: string }>();
     for (const p of dl) {
+      if (map.has(p.symbol) && process.env.NODE_ENV !== "production") {
+        console.warn(`[scan] symbol collision (dl): ${p.symbol} already seen`);
+      }
       map.set(p.symbol, {
         symbol: p.symbol,
         name: p.name,

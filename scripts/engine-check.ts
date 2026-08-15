@@ -119,6 +119,22 @@ assert("Percentiles ∈ [0,100]", bench.percentiles.every((p) => p.percentile >=
 assert("Relative IA ∈ [0,100]", bench.relativeIA >= 0 && bench.relativeIA <= 100, `got ${bench.relativeIA}`);
 assert("Single-peer benchmark → rank 1/1", bench.percentiles.every((p) => p.rank === 1 && p.total === 1));
 
+// 6. Competition ranking ties — two identical values must share rank 1.
+const tieA: EngineInputs = { ...fixture, symbol: "TIE_A", revenueGrowth: 0.5 };
+const tieB: EngineInputs = { ...fixture, symbol: "TIE_B", revenueGrowth: 0.5 }; // identical RG
+const tiePeers = [tieA, tieB];
+const tieBench = benchmarkAsset(tieA, tiePeers);
+const rgRow = tieBench.percentiles.find((p) => p.key === "revenueGrowth");
+assert("Tied values share rank 1 (competition ranking)", rgRow?.rank === 1 && rgRow?.total === 2, `got rank=${rgRow?.rank}/${rgRow?.total}`);
+assert("Tied value percentile = 0 (none strictly worse)", rgRow?.percentile === 0, `got ${rgRow?.percentile}`);
+
+// 7. Registry auto-registers built-in providers.
+const { listProviders } = await import("../src/providers/registry");
+const registeredProviders = listProviders();
+assert("Registry has ≥2 providers after listProviders()", registeredProviders.length >= 2, `got ${registeredProviders.length}`);
+assert("Registry includes defillama", registeredProviders.some((p) => p.meta.slug === "defillama"));
+assert("Registry includes coingecko", registeredProviders.some((p) => p.meta.slug === "coingecko"));
+
 console.log("─".repeat(50));
 if (failures === 0) {
   console.log("✓ All engine checks passed.");

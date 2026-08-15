@@ -99,10 +99,11 @@ export function ComparisonView() {
 
   const clear = () => setSelected([]);
 
-  // determine winner per row (best rank = 1)
-  const winner = (row: ComparisonRow): string | null => {
-    const best = row.cells.find((c) => c.rank === 1);
-    return best?.symbol ?? null;
+  // determine winners per row — best WITHIN the selected set (head-to-head),
+  // not the global rank-1 across all peers. Ties share the win.
+  const winners = (row: ComparisonRow): Set<string> => {
+    const bestRank = row.cells.reduce((m, c) => Math.min(m, c.rank), Infinity);
+    return new Set(row.cells.filter((c) => c.rank === bestRank).map((c) => c.symbol));
   };
 
   // overall winner by relativeIA
@@ -285,7 +286,7 @@ export function ComparisonView() {
                   </thead>
                   <tbody>
                     {comp.rows.map((row) => {
-                      const win = winner(row);
+                      const winSet = winners(row);
                       return (
                         <tr key={row.metric} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="py-2.5 px-3 text-xs font-medium sticky start-0 bg-card/80 backdrop-blur z-10">
@@ -297,7 +298,7 @@ export function ComparisonView() {
                             )}
                           </td>
                           {row.cells.map((cell) => {
-                            const isWin = cell.symbol === win;
+                            const isWin = winSet.has(cell.symbol);
                             return (
                               <td key={cell.symbol} className="py-2.5 px-3 text-center">
                                 <div

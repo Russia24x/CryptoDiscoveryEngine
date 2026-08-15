@@ -10,8 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { BarChart3, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Trophy } from "lucide-react";
 import { cn } from "@/lib/format";
 
 interface PeerPercentile {
