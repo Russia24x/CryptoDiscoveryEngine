@@ -1,92 +1,110 @@
-# CryptoSieve — Engineering Rules (MANDATORY)
+# CryptoSieve — Project Rules
 
-These rules are non-negotiable. Every session MUST follow them before any change.
+> **Source of truth for every agent and human contributor working on this repository.**
+> These rules are **non-negotiable**. If any rule conflicts with a later instruction, the later instruction must explicitly cite and override the rule by name.
 
 ---
 
-## RULE 1 — NEVER-FORCE-PUSH
+## Rule 1 — NEVER-FORCE-PUSH
 
-`git push --force` (and `--force-with-lease`) is **absolutely forbidden**.
+`git push --force`, `git push -f`, `git push --force-with-lease`, and any variant are **absolutely forbidden**.
 
 - If a normal `git push` is rejected (non-fast-forward):
-  1. **STOP immediately.**
-  2. Report the rejection to the user.
-  3. **Wait for the user's decision.** Do NOT force.
-  4. The only acceptable resolution is to `git fetch` + `git pull --rebase` (or merge) and then push again normally — and even that requires user confirmation if divergence is non-trivial.
-
-Rationale: force-push destroys history on the shared remote and breaks the soft-lock contract that GitHub is the source of truth.
-
----
-
-## RULE 2 — SESSION-START-SYNC-CHECK
-
-At the **start of every session** (and after any time gap / new message), BEFORE making any new change:
-
-```
-a. git fetch origin
-b. git status
-```
-
-- If the output shows **"behind"** or **"diverged"** from `origin/main`:
-  1. **STOP immediately.**
-  2. Report the exact divergence to the user.
-  3. Do NOT proceed with new work until reconciled.
-
-- If the output is **clean / up-to-date** with `origin/main`:
-  - Proceed with new work normally.
-
-Rationale: the sandbox/container filesystem can drift from GitHub. GitHub is the canonical source of truth, so every session must begin by confirming local == origin/main.
+  1. **STOP immediately.** Do not attempt any force push.
+  2. **Report** the rejection to the user (show the exact error).
+  3. **Wait** for the user's decision before taking any further git action.
+- Never run `git rebase` that rewrites already-pushed history without explicit user approval.
+- Rationale: this repository is the canonical backup of the project. Force-pushing destroys history and can permanently lose verified commits.
 
 ---
 
-## RULE 3 — COMMIT DISCIPLINE
+## Rule 2 — SESSION-START-SYNC-CHECK
 
-- Commit **everything** you build through this key. GitHub is the future-proof backup.
-- Never commit secrets (`.env`, PAT tokens). The PAT lives only in `.git/config` remote URL.
-- Write clear, conventional commit messages.
-- Prefer many small commits over one giant commit.
+At the **start of every session** (and after any meaningful time gap), **before** making any new change to the repository:
 
----
+1. Run `git fetch origin`
+2. Run `git status` (and `git status -sb`)
+3. Check the result:
+   - If local is **"behind"** `origin/main` → **STOP immediately**, report, and wait.
+   - If local is **"diverged"** from `origin/main` → **STOP immediately**, report, and wait.
+   - If local is **"ahead"** (clean, up-to-date, or ahead-only) → safe to proceed.
+4. Only after confirming the local tree matches (or is ahead of) the last verified commit on GitHub may you continue with new work.
 
-## RULE 4 — FREE-FIRST, KEY-READY
-
-- The system currently runs on **free, key-less APIs** (DeFiLlama, CoinGecko public, etc.).
-- All data-provider code MUST be written so that **key-based providers** (CoinMarketCap, Messari, Nansen, etc.) can be added later via the same provider interface — only the adapter + an API-key field change.
-- Never hard-code a paid endpoint as if it were the only path.
-
----
-
-## RULE 5 — BILINGUAL BY DESIGN
-
-- Every user-facing string lives in the i18n dictionaries (`fa` + `en`).
-- Persian (`fa`) is RTL, English (`en`) is LTR. The document `<dir>` attribute MUST flip accordingly.
-- No hardcoded UI strings in components.
+This guarantees that the local container and GitHub never silently drift apart — GitHub is the durable source of truth, not the local sandbox.
 
 ---
 
-## RULE 6 — PLATFORM-AGNOSTIC ARCHITECTURE
+## Rule 3 — GitHub is Canonical
 
-- The core engine (formulas, data providers, scoring) MUST be pure TypeScript with zero DOM/Next.js coupling, so it can be reused in:
-  - Mobile (React Native / Expo)
-  - Desktop (Tauri / Electron)
-  - CLI
-- UI is a thin presentation layer over the engine.
+The sandbox/container environment can break or be reset at any time. Therefore:
+
+- **Commit early, commit often.** Every meaningful unit of work → a commit.
+- **Push after each commit** (normal push only — see Rule 1).
+- If the container is lost, the project must be fully recoverable from `git clone`.
+- The opening/founding document (`docs/PRD.md`) and these `RULES.md` must always be present in the repo.
 
 ---
 
-## Locked Architecture Reminder
+## Rule 4 — Architecture is Locked
 
-The Investment Attractiveness framework is **LOCKED** (see `docs/ARCHITECTURE.md`).
+The decision-engine architecture defined in `docs/PRD.md` (Section: Locked Formula) is **architecturally locked**:
 
 ```
 Gate → PQ → TQ → VA → V → R → IA_raw → C → IA_effective → M → IA_final
 ```
 
-```
-IA_raw       = (PQ^0.20 · TQ^0.25 · VA^0.20 · V^0.35) / R_safe^0.15
-IA_effective = IA_raw × C
-IA_final     = IA_raw × C × M
-C ∈ [0.70, 1.00]   M ∈ [0.90, 1.10]   R_safe = max(R, 1)
-```
+The formulas (`IA_raw`, `IA_effective`, `IA_final`, `VAE = α × δ`, the four ranks) must not be silently changed. Any change to the math requires:
 
-Do not change the exponents, weights, or gate thresholds without explicit user sign-off.
+1. An explicit proposal documenting *why*.
+2. User approval.
+3. A versioned update to `docs/PRD.md` with the old and new formula.
+
+---
+
+## Rule 5 — Free-First, Key-Ready
+
+- All integrations default to **free, no-key APIs** (CoinGecko public, DeFiLlama public).
+- The provider abstraction (`src/lib/providers/`) must support **optional API keys** so paid providers (CoinMarketCap, Messari, etc.) can be added later without refactoring.
+- Never hardcode a paid API key. Keys are stored in the DB / env and managed via the Settings UI.
+
+---
+
+## Rule 6 — Bilingual by Design (FA-RTL / EN-LTR)
+
+- Every user-facing string must go through `next-intl` message catalogs (`fa.json`, `en.json`).
+- Persian (default) renders RTL; English renders LTR. The `<html dir>` attribute must reflect the active locale.
+- No hardcoded English or Persian strings in components.
+
+---
+
+## Rule 7 — Evidence > Narrative
+
+The product philosophy: every score, every decision, every thesis statement must be backed by **traceable evidence** (source, timestamp, freshness, confidence, grade). Narrative without evidence is explicitly rejected by the engine.
+
+---
+
+## Rule 8 — Future-Portable Architecture
+
+The core engine (`src/lib/engine/`) and types must be framework-agnostic pure TypeScript so the same logic can later power:
+
+- A mobile app (React Native / Expo)
+- A desktop app (Tauri / Electron)
+- A CLI tool
+- A different web framework
+
+UI code stays in `src/app/` and `src/components/`; engine code stays in `src/lib/engine/` and must not import React or Next.js.
+
+---
+
+## Quick Reference
+
+| # | Rule | One-liner |
+|---|------|-----------|
+| 1 | NEVER-FORCE-PUSH | Never `--force`. Rejected push → STOP & report. |
+| 2 | SESSION-START-SYNC-CHECK | `git fetch` + `git status` before any new work. |
+| 3 | GitHub is Canonical | Commit + push every unit of work. |
+| 4 | Architecture is Locked | Formula changes need explicit approval. |
+| 5 | Free-First, Key-Ready | Free APIs default; keys optional & pluggable. |
+| 6 | Bilingual by Design | All strings via `next-intl`; FA-RTL / EN-LTR. |
+| 7 | Evidence > Narrative | Every score backed by traceable evidence. |
+| 8 | Future-Portable | Engine = pure TS, no React/Next imports. |

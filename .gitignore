@@ -1,4 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# See https://help.github.com/articles/ignoring-files/ for about ignoring files.
 
 # dependencies
 node_modules
@@ -36,7 +36,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -53,9 +52,18 @@ server.log
 # Skills directory
 /skills/
 
-# database files
-/db/*.db
-/db/*.db-journal
+# Database files (SQLite local dev)
+db/*.db
+db/*.db-journal
 
-# zscripts runtime
+# Uploads (user-provided reference files)
+/upload/
+
+# Worklog (agent handover - keep local, not committed)
+worklog.md
+
+# Agent context
+/agent-ctx/
+
+# zscripts runtime pid
 /.zscripts/dev.pid
