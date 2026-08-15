@@ -238,6 +238,13 @@
     "openOriginal": "Open original",
     "ingestedCount": "{count} new items ingested",
     "ingestedNone": "No new items found (sources may be up-to-date or unreachable).",
-    "ingestFailed": "Ingestion failed"
+    "ingestFailed": "Ingestion failed",
+    "viewFull": "View full post",
+    "hasVideo": "Video",
+    "images": "images",
+    "by": "by",
+    "collapse": "Show less",
+    "expand": "Show more",
+    "noMedia": "No media"
   }
 }

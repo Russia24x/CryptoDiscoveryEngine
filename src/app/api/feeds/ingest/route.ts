@@ -62,6 +62,9 @@ export async function POST() {
                     body: item.body ?? null,
                     url: item.url ?? null,
                     publishedAt: item.publishedAt,
+                    mediaUrls: (item.mediaUrls ?? []).join(","),
+                    hasVideo: item.hasVideo ?? false,
+                    authorName: item.authorName ?? null,
                   },
                 });
                 ingested++;

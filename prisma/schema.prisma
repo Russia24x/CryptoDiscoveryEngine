@@ -187,10 +187,14 @@ model FeedItem {
   sourceId    String
   externalId  String
   title       String
-  body        String?
-  url         String?
+  body        String?   // full message text (no truncation)
+  url         String?   // link to original post
   publishedAt DateTime
   ingestedAt  DateTime @default(now())
+  // media
+  mediaUrls   String   @default("")  // CSV of image URLs
+  hasVideo    Boolean  @default(false) // video present (mp4 not exposed by Telegram web preview)
+  authorName  String?  // channel display name
 
   @@unique([sourceId, externalId])
   @@map("feed_items")

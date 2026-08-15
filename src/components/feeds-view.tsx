@@ -22,9 +22,20 @@ import {
   Inbox,
   ExternalLink,
   Settings as SettingsIcon,
+  Video,
+  ImageIcon,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface FeedSource {
   id: string;
@@ -43,6 +54,9 @@ interface FeedItem {
   body: string | null;
   url: string | null;
   publishedAt: string;
+  mediaUrls: string;      // CSV
+  hasVideo: boolean;
+  authorName: string | null;
   source: { id: string; name: string; kind: string };
 }
 
@@ -283,41 +297,181 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
               </div>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto scroll-thin pe-1">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-lg border border-border/60 bg-card/60 p-3 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border mt-0.5", feedIconColor(item.source.kind))}>
-                      <FeedIcon kind={item.source.kind} className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold">{item.source.name}</span>
-                        <span className="text-[10px] text-muted-foreground">{timeAgo(item.publishedAt)}</span>
-                      </div>
-                      <p className="text-sm leading-snug line-clamp-3">{item.title}</p>
-                      {item.url && (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-1.5"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          {t("feedsView.openOriginal")}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-2 max-h-[700px] overflow-y-auto scroll-thin pe-1">
+              {items.map((item) => {
+                const images = item.mediaUrls
+                  ? item.mediaUrls.split(",").filter(Boolean)
+                  : [];
+                return (
+                  <FeedItemCard key={item.id} item={item} images={images} />
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Feed Item Card (with images + expand dialog) ─────────────────
+
+function FeedItemCard({
+  item,
+  images,
+}: {
+  item: FeedItem;
+  images: string[];
+}) {
+  const t = useTranslations();
+  const hasMedia = images.length > 0 || item.hasVideo;
+
+  return (
+    <Dialog>
+      <div className="rounded-lg border border-border/60 bg-card/60 overflow-hidden hover:bg-muted/30 transition-colors">
+        {/* Media preview (first image) */}
+        {images.length > 0 && (
+          <div className="relative w-full aspect-video bg-muted overflow-hidden">
+            <img
+              src={images[0]}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+            {images.length > 1 && (
+              <span className="absolute top-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                <ImageIcon className="h-3 w-3" />
+                {images.length}
+              </span>
+            )}
+            {item.hasVideo && (
+              <span className="absolute top-2 start-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                <Video className="h-3 w-3" />
+                {t("feedsView.hasVideo")}
+              </span>
+            )}
+          </div>
+        )}
+        {images.length === 0 && item.hasVideo && (
+          <div className="relative w-full aspect-video bg-muted flex items-center justify-center">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/50">
+              <Video className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
+              <FeedIcon kind={item.source.kind} className="h-3 w-3" />
+            </div>
+            <span className="text-xs font-semibold">{item.source.name}</span>
+            {item.authorName && item.authorName !== item.source.name && (
+              <span className="text-[10px] text-muted-foreground">
+                · {t("feedsView.by")} {item.authorName}
+              </span>
+            )}
+            <span className="text-[10px] text-muted-foreground ms-auto">{timeAgo(item.publishedAt)}</span>
+          </div>
+          <p className="text-sm leading-snug line-clamp-3">{item.title}</p>
+          <div className="flex items-center gap-3 mt-2">
+            <DialogTrigger asChild>
+              <button className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                <Maximize2 className="h-3 w-3" />
+                {t("feedsView.viewFull")}
+              </button>
+            </DialogTrigger>
+            {item.url && (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {t("feedsView.openOriginal")}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Full-content dialog */}
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto scroll-thin">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <div className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
+              <FeedIcon kind={item.source.kind} className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <DialogTitle className="text-sm">{item.source.name}</DialogTitle>
+              <DialogDescription className="text-[11px] text-muted-foreground">
+                {item.authorName ? `${t("feedsView.by")} ${item.authorName} · ` : ""}
+                {timeAgo(item.publishedAt)}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* All images */}
+        {images.length > 0 && (
+          <div className={cn(
+            "grid gap-1.5",
+            images.length === 1 ? "grid-cols-1" : "grid-cols-2",
+          )}>
+            {images.map((img, i) => (
+              <a
+                key={i}
+                href={img}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "block overflow-hidden rounded-lg bg-muted",
+                  images.length === 1 ? "" : "aspect-square",
+                )}
+              >
+                <img
+                  src={img}
+                  alt=""
+                  className="w-full h-full object-cover hover:scale-105 transition-transform"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Video indicator */}
+        {item.hasVideo && (
+          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
+            <Video className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              {t("feedsView.hasVideo")} — {t("feedsView.openOriginal")}
+            </span>
+          </div>
+        )}
+
+        {/* Full body text */}
+        {item.body && (
+          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+            {item.body}
+          </div>
+        )}
+
+        {/* Original link */}
+        {item.url && (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t("feedsView.openOriginal")}
+          </a>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

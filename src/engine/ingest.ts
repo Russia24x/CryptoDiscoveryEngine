@@ -13,9 +13,12 @@
 export interface IngestedItem {
   externalId: string;
   title: string;
-  body?: string;
+  body?: string;        // full message text (not truncated)
   url?: string;
   publishedAt: Date;
+  mediaUrls?: string[];  // image URLs (cdn4.telesco.pe for Telegram)
+  hasVideo?: boolean;    // Telegram web preview doesn't expose mp4s
+  authorName?: string;   // channel display name
 }
 
 export interface IngestResult {
@@ -116,13 +119,15 @@ export function telegramChannelName(address: string): string | null {
 /**
  * Parse the public t.me/s/CHANNEL preview HTML.
  * Telegram's preview renders messages in .tgme_widget_message elements.
+ * Extracts: full message text, images (background-image:url), video presence,
+ * author name, datetime, and post link.
  */
 export function parseTelegram(html: string): IngestedItem[] {
   const items: IngestedItem[] = [];
-  // Split by message wrapper
+  // Split by message wrapper. Each block starts with a class attr.
   const messageBlocks = html.split(/class="tgme_widget_message /).slice(1);
   for (const block of messageBlocks.slice(0, 20)) {
-    // Extract message text
+    // Extract full message text (don't truncate — keep full content)
     const textMatch = block.match(
       /class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
     );
@@ -130,9 +135,25 @@ export function parseTelegram(html: string): IngestedItem[] {
     const timeMatch = block.match(/datetime="([^"]+)"/i);
     // Extract post link
     const linkMatch = block.match(/class="tgme_widget_message_date"[^>]*href="([^"]+)"/i);
+    // Extract author name
+    const authorMatch = block.match(
+      /class="tgme_widget_message_owner_name"[^>]*><span[^>]*>([^<]+)<\/span>/i,
+    );
+    // Extract all image URLs from background-image:url('...') in photo_wrap elements
+    const photoMatches = block.matchAll(
+      /class="tgme_widget_message_photo_wrap[^"]*"[^>]*style="[^"]*background-image:url\('([^']+)'\)/gi,
+    );
+    const mediaUrls: string[] = [];
+    for (const m of photoMatches) {
+      if (m[1]) mediaUrls.push(m[1]);
+    }
+    // Detect video presence (Telegram web preview marks as not_supported but
+    // we know a video exists). The actual mp4 isn't exposed without the app.
+    const hasVideo = /tgme_widget_message_video/.test(block);
 
     const rawText = textMatch ? stripHtml(textMatch[1]) : "";
-    if (!rawText) continue;
+    // Skip if no text AND no media (pure system message or empty)
+    if (!rawText && mediaUrls.length === 0 && !hasVideo) continue;
 
     const publishedAt = timeMatch ? new Date(timeMatch[1]) : new Date();
     if (isNaN(publishedAt.getTime())) continue;
@@ -142,10 +163,13 @@ export function parseTelegram(html: string): IngestedItem[] {
 
     items.push({
       externalId,
-      title: rawText.slice(0, 120) + (rawText.length > 120 ? "…" : ""),
-      body: rawText.slice(0, 500),
+      title: rawText.slice(0, 140) + (rawText.length > 140 ? "…" : ""),
+      body: rawText || undefined, // full text, no truncation
       url,
       publishedAt,
+      mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+      hasVideo: hasVideo || undefined,
+      authorName: authorMatch?.[1]?.trim() || undefined,
     });
   }
   return items;
