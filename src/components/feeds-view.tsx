@@ -53,16 +53,16 @@ interface FeedSource {
 }
 
 interface FeedItem {
-  id: string;
   externalId: string;
   title: string;
-  body: string | null;
-  url: string | null;
+  body: string | undefined;
+  url: string | undefined;
   publishedAt: string;
-  mediaUrls: string;      // CSV
-  hasVideo: boolean;
-  authorName: string | null;
-  source: { id: string; name: string; kind: string };
+  mediaUrls: string[] | undefined;
+  hasVideo: boolean | undefined;
+  authorName: string | undefined;
+  sourceKind: string;
+  sourceName: string;
 }
 
 function FeedIcon({ kind, className }: { kind: string; className?: string }) {
@@ -107,13 +107,19 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
     },
   });
 
-  const { data: itemsData, isLoading: itemsLoading } = useQuery<{ items: FeedItem[] }>({
-    queryKey: ["feed-items"],
+  // MIRROR MODE — fetches live from sources on-demand, no DB storage.
+  // 5-min cache on the server side (via /api/feeds/live), 60s staleTime client-side.
+  const { data: itemsData, isLoading: itemsLoading } = useQuery<{
+    items: FeedItem[];
+    cached: boolean;
+  }>({
+    queryKey: ["feed-live"],
     queryFn: async () => {
-      const r = await fetch("/api/feeds/items?limit=100");
+      const r = await fetch("/api/feeds/live");
       if (!r.ok) throw new Error("failed");
       return r.json();
     },
+    staleTime: 60_000,
   });
 
   const deleteFeed = useMutation({
@@ -123,29 +129,17 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
-      qc.invalidateQueries({ queryKey: ["feed-items"] });
+      qc.invalidateQueries({ queryKey: ["feed-live"] });
       toast.success(t("settings.removed"));
     },
     onError: (e) => toast.error(`${t("settings.removeFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
-  const ingest = useMutation({
+  // Manual refresh — refetches from live sources (bypasses cache via refetch)
+  const refreshLive = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/feeds/ingest", { method: "POST" });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-      return data;
+      qc.invalidateQueries({ queryKey: ["feed-live"] });
     },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["feed-items"] });
-      const total = data.totalIngested ?? 0;
-      if (total > 0) {
-        toast.success(t("feedsView.ingestedCount", { count: total }));
-      } else {
-        toast.info(t("feedsView.ingestedNone"));
-      }
-    },
-    onError: (e) => toast.error(`${t("feedsView.ingestFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   const sources = feedData?.sources ?? [];
@@ -155,7 +149,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
   const items = useMemo(() => {
     let filtered = allItems;
     if (filter !== "all") {
-      filtered = allItems.filter((i) => i.source.kind === filter);
+      filtered = allItems.filter((i) => i.sourceKind === filter);
     }
     const sorted = [...filtered].sort((a, b) => {
       const aT = new Date(a.publishedAt).getTime();
@@ -194,10 +188,10 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
               variant="outline"
               size="sm"
               className="gap-2 shrink-0"
-              onClick={() => ingest.mutate()}
-              disabled={ingest.isPending || sources.length === 0}
+              onClick={() => refreshLive.mutate()}
+              disabled={refreshLive.isPending || sources.length === 0}
             >
-              <RefreshCw className={cn("h-4 w-4", ingest.isPending && "animate-spin")} />
+              <RefreshCw className={cn("h-4 w-4", refreshLive.isPending && "animate-spin")} />
               <span className="hidden sm:inline">{t("feedsView.refresh")}</span>
             </Button>
           </div>
@@ -311,7 +305,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
                       onClick={() => setFilter("telegram")}
                       label={t("settings.feedTelegram")}
                       icon={<Send className="h-3 w-3" />}
-                      count={allItems.filter((i) => i.source.kind === "telegram").length}
+                      count={allItems.filter((i) => i.sourceKind === "telegram").length}
                     />
                   )}
                   {availableKinds.has("x") && (
@@ -320,7 +314,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
                       onClick={() => setFilter("x")}
                       label={t("settings.feedX")}
                       icon={<Twitter className="h-3 w-3" />}
-                      count={allItems.filter((i) => i.source.kind === "x").length}
+                      count={allItems.filter((i) => i.sourceKind === "x").length}
                     />
                   )}
                   {availableKinds.has("rss") && (
@@ -329,7 +323,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
                       onClick={() => setFilter("rss")}
                       label={t("settings.feedRss")}
                       icon={<Rss className="h-3 w-3" />}
-                      count={allItems.filter((i) => i.source.kind === "rss").length}
+                      count={allItems.filter((i) => i.sourceKind === "rss").length}
                     />
                   )}
                 </div>
@@ -398,10 +392,10 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
                     variant="outline"
                     size="sm"
                     className="gap-2 mt-2"
-                    onClick={() => ingest.mutate()}
-                    disabled={ingest.isPending}
+                    onClick={() => refreshLive.mutate()}
+                    disabled={refreshLive.isPending}
                   >
-                    <RefreshCw className={cn("h-4 w-4", ingest.isPending && "animate-spin")} />
+                    <RefreshCw className={cn("h-4 w-4", refreshLive.isPending && "animate-spin")} />
                     {t("feedsView.refresh")}
                   </Button>
                 )}
@@ -420,11 +414,11 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
             >
               {items.map((item) => {
                 const images = item.mediaUrls
-                  ? item.mediaUrls.split(",").filter(Boolean)
+                  ? item.mediaUrls.filter(Boolean)
                   : [];
                 return (
                   <FeedItemCard
-                    key={item.id}
+                    key={item.externalId}
                     item={item}
                     images={images}
                     viewMode={viewMode}
@@ -458,10 +452,10 @@ function FeedItemCard({
       {/* COMPACT mode — single row, no image */}
       {viewMode === "compact" ? (
         <div className="flex items-center gap-2 rounded-md border border-border/40 bg-card/40 px-2.5 py-1.5 hover:bg-muted/30 transition-colors">
-          <div className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border", feedIconColor(item.source.kind))}>
-            <FeedIcon kind={item.source.kind} className="h-2.5 w-2.5" />
+          <div className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border", feedIconColor(item.sourceKind))}>
+            <FeedIcon kind={item.sourceKind} className="h-2.5 w-2.5" />
           </div>
-          <span className="text-xs font-semibold shrink-0">{item.source.name}</span>
+          <span className="text-xs font-semibold shrink-0">{item.sourceName}</span>
           <p className="text-xs text-muted-foreground truncate flex-1">{item.title}</p>
           {images.length > 0 && (
             <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground shrink-0">
@@ -522,11 +516,11 @@ function FeedItemCard({
           {/* Content */}
           <div className="p-3 flex-1">
             <div className="flex items-center gap-2 mb-1.5">
-              <div className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
-                <FeedIcon kind={item.source.kind} className="h-3 w-3" />
+              <div className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.sourceKind))}>
+                <FeedIcon kind={item.sourceKind} className="h-3 w-3" />
               </div>
-              <span className="text-xs font-semibold">{item.source.name}</span>
-              {item.authorName && item.authorName !== item.source.name && (
+              <span className="text-xs font-semibold">{item.sourceName}</span>
+              {item.authorName && item.authorName !== item.sourceName && (
                 <span className="text-[10px] text-muted-foreground">
                   · {t("feedsView.by")} {item.authorName}
                 </span>
@@ -561,11 +555,11 @@ function FeedItemCard({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto scroll-thin">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.source.kind))}>
-              <FeedIcon kind={item.source.kind} className="h-4 w-4" />
+            <div className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border", feedIconColor(item.sourceKind))}>
+              <FeedIcon kind={item.sourceKind} className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-sm">{item.source.name}</DialogTitle>
+              <DialogTitle className="text-sm">{item.sourceName}</DialogTitle>
               <DialogDescription className="text-[11px] text-muted-foreground">
                 {item.authorName ? `${t("feedsView.by")} ${item.authorName} · ` : ""}
                 {timeAgo(item.publishedAt)}

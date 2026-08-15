@@ -176,26 +176,9 @@ model FeedSource {
   enabled     Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  items       FeedItem[]
 
   @@map("feed_sources")
 }
 
-model FeedItem {
-  id          String   @id @default(cuid())
-  source      FeedSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  sourceId    String
-  externalId  String
-  title       String
-  body        String?   // full message text (no truncation)
-  url         String?   // link to original post
-  publishedAt DateTime
-  ingestedAt  DateTime @default(now())
-  // media
-  mediaUrls   String   @default("")  // CSV of image URLs
-  hasVideo    Boolean  @default(false) // video present (mp4 not exposed by Telegram web preview)
-  authorName  String?  // channel display name
-
-  @@unique([sourceId, externalId])
-  @@map("feed_items")
-}
+// FeedItem model REMOVED — feeds are now mirror-only (fetch + display, no DB storage).
+// Content belongs to the source; we only display it via /api/feeds/live.
