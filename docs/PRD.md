@@ -382,23 +382,27 @@ This is what separates CryptoSieve from a "Crypto Analytics Dashboard."
 
 ## 5. Roadmap
 
+> Status legend: ✅ shipped · 🔲 planned
+
 ```
-V1.1  Evidence Graph
+V1.1  ✅ Evidence Graph                       (SHIPPED)
       + Project / Token / Investment separation
       + Explainable Decision
             ↓
-V1.2  Peer Benchmarking
-      + Percentile Engine
-      + Historical Score
+V1.2  ✅ Peer Benchmarking                     (SHIPPED)
+      + Percentile Engine (12 metrics, competition ranking, Relative IA)
+      + Comparison view (2–5 assets side-by-side)
+      + Historical Score tracking (ScanRow time-series + trend sparklines)
+      + Batch trend API (N+1 → 1 request)
             ↓
-V1.3  Unlock / Tokenomics Engine
+V1.3  🔲 Unlock / Tokenomics Engine
       + Capital Flow / Smart Money (lite)
             ↓
-V1.4  Thesis Engine
+V1.4  🔲 Thesis Engine
       + Catalyst Engine
       + Kill Conditions
             ↓
-V2    AI Research Copilot
+V2    🔲 AI Research Copilot
       + Continuous Monitoring
       + Automatic Thesis Updates
 ```
