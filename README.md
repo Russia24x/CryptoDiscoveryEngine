@@ -181,5 +181,5 @@ See [`docs/PRD.md`](docs/PRD.md) §12 for the full roadmap. Current status:
 - **V1.1** ✅ Locked architecture, bilingual, discovery, detail, explainable decision, evidence graph
 - **V1.2** ✅ Peer benchmarking + percentile engine + comparison view + historical trend sparklines
 - **V1.3** 🔲 Tokenomics engine + smart-money capital-flow evidence
-- **V1.4** 🔲 Thesis engine + catalyst engine + kill conditions
+- **V1.4** ✅ Thesis Engine (first cut: living thesis + status gauge) · 🔲 Catalyst + kill conditions
 - **V2**   🔲 AI research copilot + continuous monitoring

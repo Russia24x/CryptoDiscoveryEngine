@@ -398,9 +398,11 @@ V1.2  ✅ Peer Benchmarking                     (SHIPPED)
 V1.3  🔲 Unlock / Tokenomics Engine
       + Capital Flow / Smart Money (lite)
             ↓
-V1.4  🔲 Thesis Engine
-      + Catalyst Engine
-      + Kill Conditions
+V1.4  ✅ Thesis Engine (first cut)                (SHIPPED)
+      + Living thesis per asset (title, whyWorks, mustStayTrue, whatBreaksIt)
+      + Status gauge (intact/weakening/broken)
+      + 🔲 Catalyst Engine
+      + 🔲 Kill Conditions (formal)
             ↓
 V2    🔲 AI Research Copilot
       + Continuous Monitoring
