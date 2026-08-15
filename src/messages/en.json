@@ -66,7 +66,9 @@
     "colCategory": "Category",
     "colGate": "Gate",
     "noResults": "Run a scan to see ranked assets.",
-    "clickHint": "Click a row to open the full explainable decision."
+    "clickHint": "Click a row to open the full explainable decision.",
+    "error": "Scan failed to load",
+    "retry": "Retry"
   },
   "decision": {
     "BUY": "BUY",
@@ -111,7 +113,8 @@
     "separation": "Project ≠ Token ≠ Investment",
     "separationHint": "A great project with a bad token can still be a bad investment — and vice-versa.",
     "evidence": "Evidence Graph",
-    "evidenceHint": "Every metric carries a source, timestamp, freshness, confidence and grade."
+    "evidenceHint": "Every metric carries a source, timestamp, freshness, confidence and grade.",
+    "dataError": "Detail data could not be loaded — showing summary from scan only."
   },
   "settings": {
     "title": "Data Providers",
@@ -184,6 +187,7 @@
     "iaRaw": "IA Raw",
     "iaFinal": "IA Final",
     "addFromScan": "Pick from scan results",
-    "compareCta": "Compare selected"
+    "compareCta": "Compare selected",
+    "error": "Comparison failed to load"
   }
 }

@@ -28,6 +28,8 @@ import {
   XCircle,
   Info,
   ArrowUpDown,
+  AlertTriangle,
+  RotateCw,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
 import { cn, decisionClass, fmtScore } from "@/lib/format";
@@ -51,7 +53,7 @@ export function DiscoveryView({
   const [mode, setMode] = useState<"demo" | "live">("demo");
   const [sortKey, setSortKey] = useState<SortKey>("rankMkt");
 
-  const { data, isLoading, isFetching, refetch } = useQuery<ScanResp>({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<ScanResp>({
     queryKey: ["scan", mode],
     queryFn: async () => {
       const res = await fetch(`/api/scan?mode=${mode}`);
@@ -199,6 +201,9 @@ export function DiscoveryView({
         <CardContent className="p-0">
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full text-sm">
+              <caption className="sr-only">
+                {t("discovery.title")} — {t("discovery.subtitle")}
+              </caption>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-2.5 px-3 text-start font-medium">#</th>
@@ -300,7 +305,23 @@ export function DiscoveryView({
                       </tr>
                     );
                   })}
-                {!isLoading && rows.length === 0 && (
+                {!isLoading && isError && (
+                  <tr>
+                    <td colSpan={10} className="py-10 text-center">
+                      <div className="flex flex-col items-center gap-2 text-sm">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        <span className="text-red-600 dark:text-red-400 font-medium">
+                          {t("discovery.error")}
+                        </span>
+                        <Button variant="outline" size="sm" className="gap-2 h-8" onClick={() => refetch()}>
+                          <RotateCw className="h-3.5 w-3.5" />
+                          {t("discovery.retry")}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {!isLoading && !isError && rows.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-10 text-center text-muted-foreground text-sm">
                       {t("discovery.noResults")}

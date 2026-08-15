@@ -20,6 +20,8 @@ import {
   Plus,
   Sparkles,
   Crown,
+  AlertTriangle,
+  RotateCw,
 } from "lucide-react";
 import { demoAssets } from "@/providers/demo-data";
 import { cn, fmtScore, fmtUsd } from "@/lib/format";
@@ -70,7 +72,7 @@ export function ComparisonView() {
   const t = useTranslations();
   const [selected, setSelected] = useState<string[]>(["HYPE", "AAVE", "GMX"]);
 
-  const { data, isFetching, refetch } = useQuery<{ comparison: ComparisonResult }>({
+  const { data, isFetching, isError, refetch } = useQuery<{ comparison: ComparisonResult }>({
     queryKey: ["compare", selected.join(",")],
     queryFn: async () => {
       const r = await fetch("/api/compare", {
@@ -195,6 +197,21 @@ export function ComparisonView() {
             {t("compare.noData")}
           </CardContent>
         </Card>
+      ) : isError ? (
+        <Card>
+          <CardContent className="py-10">
+            <div className="flex flex-col items-center gap-2 text-sm">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <span className="text-red-600 dark:text-red-400 font-medium">
+                {t("compare.error")}
+              </span>
+              <Button variant="outline" size="sm" className="gap-2 h-8" onClick={() => refetch()}>
+                <RotateCw className="h-3.5 w-3.5" />
+                {t("discovery.retry")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : isFetching || !comp ? (
         <Card>
           <CardHeader>
@@ -265,6 +282,9 @@ export function ComparisonView() {
             <CardContent className="p-0">
               <div className="overflow-x-auto scroll-thin">
                 <table className="w-full text-sm">
+                  <caption className="sr-only">
+                    {t("compare.title")} — {t("compare.subtitle")}
+                  </caption>
                   <thead>
                     <tr className="border-b bg-muted/40 text-xs">
                       <th className="py-2.5 px-3 text-start font-medium text-muted-foreground sticky start-0 bg-muted/40 backdrop-blur z-10">

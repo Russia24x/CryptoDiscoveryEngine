@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Sparkles,
   Scale,
+  AlertTriangle,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
 import type { EngineInputs, EngineResult } from "@/engine";
@@ -61,7 +62,7 @@ export function DetailView({
   const isRtl = locale === "fa";
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
 
-  const { data, isLoading } = useQuery<DetailResp>({
+  const { data, isLoading, isError } = useQuery<DetailResp>({
     queryKey: ["project", row.symbol],
     queryFn: async () => {
       const res = await fetch(`/api/projects/${row.symbol}`);
@@ -113,6 +114,13 @@ export function DetailView({
           </div>
         </div>
       </div>
+
+      {isError && !isLoading && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{t("detail.dataError")}</span>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">

@@ -219,6 +219,7 @@ export function SettingsView() {
                   size="icon"
                   variant="ghost"
                   onClick={() => deleteFeed.mutate(f.id)}
+                  aria-label={`${t("common.remove")} ${f.name}`}
                   className="h-7 w-7 text-muted-foreground hover:text-red-500"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
