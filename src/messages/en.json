@@ -199,5 +199,19 @@
     "addFromScan": "Pick from scan results",
     "compareCta": "Compare selected",
     "error": "Comparison failed to load"
+  },
+  "thesis": {
+    "title": "Investment Thesis",
+    "whyWorks": "Why it works",
+    "mustStayTrue": "What must stay true",
+    "whatBreaks": "What breaks it",
+    "latestEvidence": "Latest evidence",
+    "status": "Thesis status",
+    "intact": "intact",
+    "weakening": "weakening",
+    "broken": "broken",
+    "now": "now",
+    "threshold": "threshold",
+    "hint": "A living thesis — each time data arrives, the system asks: did this strengthen, weaken, or invalidate?"
   }
 }

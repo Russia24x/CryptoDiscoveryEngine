@@ -11,6 +11,7 @@
  */
 import { runEngine, valueAccrualChain, supplyMetrics, evaluateGate, type EngineInputs } from "../src/engine";
 import { benchmarkAsset } from "../src/engine/percentile";
+import { deriveThesis } from "../src/engine/thesis";
 import { fmtUsd, fmtPct } from "../src/lib/format";
 
 // Minimal deterministic fixture exercising every branch.
@@ -181,6 +182,22 @@ const newest20 = selectNewestN(fakeRows, 20);
 assert("trend API: returns 20 points (not 25)", newest20.length === 20);
 assert("trend API: first point is id=6 (oldest of the newest 20)", newest20[0].id === 6, `got id=${newest20[0].id}`);
 assert("trend API: last point is id=25 (newest)", newest20[newest20.length - 1].id === 25, `got id=${newest20[newest20.length - 1].id}`);
+
+// 11. Thesis engine — shape + status logic.
+const thesis = deriveThesis(fixture, result);
+assert("Thesis has non-empty title", thesis.title.length > 0, `got '${thesis.title}'`);
+assert("Thesis statusPct ∈ [0,100]", thesis.statusPct >= 0 && thesis.statusPct <= 100, `got ${thesis.statusPct}`);
+assert("Thesis statusLabel is valid", ["intact", "weakening", "broken"].includes(thesis.statusLabel));
+assert("Thesis mustStayTrue has ≥4 conditions", thesis.mustStayTrue.length >= 4, `got ${thesis.mustStayTrue.length}`);
+assert("Thesis mustStayTrue all have met:boolean", thesis.mustStayTrue.every((c) => typeof c.met === "boolean"));
+assert("Thesis whatBreaksIt has ≥3 entries", thesis.whatBreaksIt.length >= 3, `got ${thesis.whatBreaksIt.length}`);
+assert("Thesis latestEvidence has ≥4 entries", thesis.latestEvidence.length >= 4, `got ${thesis.latestEvidence.length}`);
+assert("Thesis latestEvidence directions are valid", thesis.latestEvidence.every((e) => ["up", "down", "neutral"].includes(e.direction)));
+// statusLabel ↔ statusPct consistency
+const expectedLabel = thesis.statusPct >= 80 ? "intact" : thesis.statusPct >= 50 ? "weakening" : "broken";
+assert("Thesis statusLabel matches statusPct threshold", thesis.statusLabel === expectedLabel, `got ${thesis.statusLabel} for ${thesis.statusPct}%`);
+// buyback_burn fixture must include the SAR condition
+assert("Thesis (buyback_burn) includes SAR condition", thesis.mustStayTrue.some((c) => c.label.includes("Supply absorption")), "SAR condition should appear for buyback_burn thesis");
 
 console.log("─".repeat(50));
 if (failures === 0) {
