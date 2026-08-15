@@ -559,7 +559,7 @@ function EvidenceCard({
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
         <span>conf {(e.confidence * 100).toFixed(0)}%</span>
-        <span>{e.freshnessH?.toFixed(0)}h old</span>
+        <span>{Math.round(e.freshnessH)}h old</span>
       </div>
     </div>
   );

@@ -117,7 +117,7 @@ export function ThesisPanel({ symbol }: { symbol: string }) {
         {/* Thesis title + status gauge */}
         <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-4">
           <div className="relative h-20 w-20 shrink-0">
-            <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
+            <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80" aria-hidden="true">
               <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
               <circle
                 cx="40" cy="40" r="34" fill="none" stroke={stroke} strokeWidth="6"
