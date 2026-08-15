@@ -246,6 +246,22 @@ export async function GET(req: Request) {
         })
         .filter((x): x is NonNullable<typeof x> => x !== null),
     });
+
+    // Retention: keep only the most recent MAX_SCANS scans (+ their rows).
+    // Prevents unbounded DB growth on a free-first SQLite system. Older scans
+    // are pruned with their child rows (FK cascade would also work, but we
+    // delete children explicitly to be safe across schema versions).
+    const MAX_SCANS = 100;
+    const oldScans = await db.scan.findMany({
+      orderBy: { finishedAt: "desc" },
+      skip: MAX_SCANS,
+      select: { id: true },
+    });
+    if (oldScans.length > 0) {
+      const oldIds = oldScans.map((s) => s.id);
+      await db.scanRow.deleteMany({ where: { scanId: { in: oldIds } } });
+      await db.scan.deleteMany({ where: { id: { in: oldIds } } });
+    }
   } catch (e) {
     // db is optional — scan still returns results to the user.
     if (process.env.NODE_ENV !== "production") {
