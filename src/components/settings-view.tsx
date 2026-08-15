@@ -79,12 +79,15 @@ export function SettingsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: p.slug, enabled: !p.enabled }),
       });
-      return r.json();
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
       toast.success("Provider updated");
     },
+    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
   });
 
   const saveKey = useMutation({
@@ -94,12 +97,15 @@ export function SettingsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, apiKey: key }),
       });
-      return r.json();
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
       toast.success("API key saved");
     },
+    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
   });
 
   const addFeed = useMutation({
@@ -109,22 +115,27 @@ export function SettingsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return r.json();
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
       toast.success("Feed source added");
     },
+    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
   });
 
   const deleteFeed = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`/api/feeds?id=${id}`, { method: "DELETE" });
+      const r = await fetch(`/api/feeds?id=${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
       toast.success("Removed");
     },
+    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
   });
 
   return (
@@ -314,8 +325,9 @@ function ProviderCard({
           />
           <Button
             size="sm"
+            disabled={!key.trim()}
             onClick={() => {
-              onSaveKey(key);
+              onSaveKey(key.trim());
               setKey("");
               setEditing(false);
             }}

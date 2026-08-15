@@ -71,9 +71,28 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   try {
     await ensureSeed();
+    // Generate a slug if not provided. Ensure uniqueness: if the slug already
+    // exists, append a numeric suffix (provider-name-2, -3, …).
+    const baseSlug =
+      body.slug ||
+      (body.name || "provider")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "") // strip non-ascii (persian chars etc.)
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || `provider`;
+    let slug = baseSlug;
+    let suffix = 2;
+    while (true) {
+      const exists = await db.provider.findUnique({ where: { slug } });
+      if (!exists) break;
+      slug = `${baseSlug}-${suffix++}`;
+    }
+
     const created = await db.provider.create({
       data: {
-        slug: body.slug || `provider-${Date.now()}`,
+        slug,
         name: body.name || "Custom Provider",
         baseUrl: body.baseUrl || "",
         authMode: body.authMode || "none",
@@ -96,14 +115,21 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}));
+  if (!body.slug) {
+    return NextResponse.json({ error: "slug required" }, { status: 400 });
+  }
   try {
+    // Only update fields that are explicitly provided.
+    // apiKey: "" is treated as no-op (guard against wiping a key with an
+    // empty-string payload). Use null to intentionally clear.
+    const data: Record<string, unknown> = {};
+    if (body.enabled !== undefined) data.enabled = body.enabled;
+    if (body.apiKey !== undefined && body.apiKey !== "") data.apiKey = body.apiKey;
+    if (body.priority !== undefined) data.priority = Number(body.priority);
+
     const updated = await db.provider.update({
       where: { slug: body.slug },
-      data: {
-        enabled: body.enabled,
-        apiKey: body.apiKey,
-        priority: body.priority !== undefined ? Number(body.priority) : undefined,
-      },
+      data,
     });
     return NextResponse.json({ provider: updated });
   } catch (e) {

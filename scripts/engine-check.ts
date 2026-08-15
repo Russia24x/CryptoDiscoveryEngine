@@ -11,6 +11,7 @@
  */
 import { runEngine, valueAccrualChain, supplyMetrics, evaluateGate, type EngineInputs } from "../src/engine";
 import { benchmarkAsset } from "../src/engine/percentile";
+import { fmtUsd, fmtPct } from "../src/lib/format";
 
 // Minimal deterministic fixture exercising every branch.
 const fixture: EngineInputs = {
@@ -134,6 +135,16 @@ const registeredProviders = listProviders();
 assert("Registry has ≥2 providers after listProviders()", registeredProviders.length >= 2, `got ${registeredProviders.length}`);
 assert("Registry includes defillama", registeredProviders.some((p) => p.meta.slug === "defillama"));
 assert("Registry includes coingecko", registeredProviders.some((p) => p.meta.slug === "coingecko"));
+
+// 8. Formatting helpers — edge cases (negatives, NaN, billions).
+assert("fmtUsd positive billions", fmtUsd(2_350_000_000) === "$2.35B", `got ${fmtUsd(2_350_000_000)}`);
+assert("fmtUsd negative millions → sign before $", fmtUsd(-60_000_000) === "-$60.0M", `got ${fmtUsd(-60_000_000)}`);
+assert("fmtUsd negative thousands", fmtUsd(-5_000) === "-$5.0K", `got ${fmtUsd(-5_000)}`);
+assert("fmtUsd small negative", fmtUsd(-500) === "-$500", `got ${fmtUsd(-500)}`);
+assert("fmtUsd NaN → em dash", fmtUsd(NaN) === "—", `got ${fmtUsd(NaN)}`);
+assert("fmtUsd zero", fmtUsd(0) === "$0", `got ${fmtUsd(0)}`);
+assert("fmtPct ratio", fmtPct(0.4318) === "43.2%", `got ${fmtPct(0.4318)}`);
+assert("fmtPct zero", fmtPct(0) === "0.0%", `got ${fmtPct(0)}`);
 
 console.log("─".repeat(50));
 if (failures === 0) {
