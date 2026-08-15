@@ -91,8 +91,12 @@ export function DiscoveryView({
 
   // Batch-fetch trends for ALL rows in one request (avoids N+1 per-row fetches).
   const symbols = rows.map((r) => r.symbol);
+  // Sort symbols for a stable cache key — otherwise re-sorting the table
+  // (which reorders `rows`) would create a new cache entry for the same
+  // symbol set, triggering redundant fetches.
+  const cacheKey = [...symbols].sort().join(",");
   const { data: trendData } = useQuery<{ trends: Record<string, TrendPoint[]> }>({
-    queryKey: ["trends-batch", symbols.join(",")],
+    queryKey: ["trends-batch", cacheKey],
     queryFn: async () => {
       if (!symbols.length) return { trends: {} };
       const r = await fetch("/api/trend", {
