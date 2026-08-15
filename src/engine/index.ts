@@ -343,7 +343,7 @@ function explain(i: EngineInputs, r: EngineResult): DecisionExplanation {
   const againstPoints: string[] = [];
   const whatChanges: string[] = [];
 
-  const { components: c, iaRaw, confidence: conf, iaFinal } = r;
+  const { components: c, confidence: conf, iaRaw, iaFinal } = r;
 
   // For
   if (c.vae >= 40) forPoints.push(`VAE ${c.vae.toFixed(1)}% — strong value capture`);

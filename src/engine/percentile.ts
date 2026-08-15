@@ -75,19 +75,20 @@ export function benchmarkAsset(
     // Standard percentile rank: (# strictly worse) / (n - 1) × 100
     // For higherBetter: worse = smaller. For lowerBetter: worse = larger.
     let below = 0;
+    let strictlyBetter = 0; // for competition ranking (ties share the better rank)
     for (const v of values) {
       if (def.higherBetter) {
         if (v < myValue) below++;
+        else if (v > myValue) strictlyBetter++;
       } else {
         if (v > myValue) below++;
+        else if (v < myValue) strictlyBetter++;
       }
     }
     const pct = values.length > 1 ? (below / (values.length - 1)) * 100 : 50;
-    // rank: 1 = best
-    const sorted = [...values].sort((a, b) =>
-      def.higherBetter ? b - a : a - b,
-    );
-    const rank = sorted.indexOf(myValue) + 1;
+    // Competition ranking: 1 + number of strictly-better values.
+    // Ties share the same rank (not the indexOf-based first-match bug).
+    const rank = strictlyBetter + 1;
     return {
       key: def.key,
       label: def.label,
@@ -181,16 +182,22 @@ export function compareAssets(
     const cells: ComparisonCell[] = targets.map((t) => {
       const value = def.extract(t);
       let below = 0;
+      let strictlyBetter = 0;
       for (const v of allValues) {
-        if (def.higherBetter ? v < value : v > value) below++;
+        if (def.higherBetter) {
+          if (v < value) below++;
+          else if (v > value) strictlyBetter++;
+        } else {
+          if (v > value) below++;
+          else if (v < value) strictlyBetter++;
+        }
       }
       const pct = allValues.length > 1 ? (below / (allValues.length - 1)) * 100 : 50;
-      const sorted = [...allValues].sort((a, b) => (def.higherBetter ? b - a : a - b));
       return {
         symbol: t.symbol,
         value,
         percentile: Math.round(pct),
-        rank: sorted.indexOf(value) + 1,
+        rank: strictlyBetter + 1,
       };
     });
     return { metric: def.key, label: def.label, cells, higherBetter: def.higherBetter };

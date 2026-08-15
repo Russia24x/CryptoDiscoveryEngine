@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -57,7 +57,8 @@ export function DetailView({
   onBack: () => void;
 }) {
   const t = useTranslations();
-  const isRtl = typeof window !== "undefined" && document.dir === "rtl";
+  const locale = useLocale();
+  const isRtl = locale === "fa";
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
 
   const { data, isLoading } = useQuery<DetailResp>({

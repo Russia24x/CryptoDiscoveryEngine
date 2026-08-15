@@ -96,9 +96,18 @@ export async function safeJsonFetch<T = unknown>(
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await f(url, { ...init, signal: ctrl.signal });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[provider] ${res.status} ${res.statusText} ← ${url}`);
+      }
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[provider] fetch failed ← ${url}: ${msg}`);
+    }
     return null;
   } finally {
     clearTimeout(t);

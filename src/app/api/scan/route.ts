@@ -108,8 +108,9 @@ async function runLiveScan(): Promise<ScanResponse> {
       });
     const results = inputs.map(runEngine);
     const ranked = rankResults(results);
+    const categoryBySymbol = new Map(inputs.map((i) => [i.symbol, i.category]));
     const rows = ranked
-      .map((r) => ({ ...r, category: inputs.find((i) => i.symbol === r.symbol)?.category }))
+      .map((r) => ({ ...r, category: categoryBySymbol.get(r.symbol) }))
       .sort((a, b) => (a.rankMkt ?? 999) - (b.rankMkt ?? 999));
     return {
       mode: "live",
@@ -129,8 +130,9 @@ async function runLiveScan(): Promise<ScanResponse> {
 function runDemoScan(): ScanResponse {
   const results = demoAssets.map(runEngine);
   const ranked = rankResults(results);
+  const categoryBySymbol = new Map(demoAssets.map((i) => [i.symbol, i.category]));
   const rows = ranked
-    .map((r) => ({ ...r, category: demoAssets.find((i) => i.symbol === r.symbol)?.category }))
+    .map((r) => ({ ...r, category: categoryBySymbol.get(r.symbol) }))
     .sort((a, b) => (a.rankMkt ?? 999) - (b.rankMkt ?? 999));
   return {
     mode: "demo",
