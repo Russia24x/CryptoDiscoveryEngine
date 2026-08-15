@@ -1,0 +1,197 @@
+// CryptoSieve — Prisma schema
+// Data model for the Crypto Investment Decision Engine.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Data Providers ────────────────────────────────────────────────
+// Free-first, key-ready. A provider may be key-less (free) or require a key.
+model Provider {
+  id          String   @id @default(cuid())
+  slug        String   @unique // "defillama" | "coingecko" | "coinmarketcap" ...
+  name        String
+  baseUrl     String
+  authMode    String   @default("none") // "none" | "header" | "query" | "bearer"
+  keyHeader   String?  // e.g. "X-CMC-Pro-API-Key"
+  keyQuery    String?  // e.g. "api_key"
+  apiKey      String?  // stored encrypted-at-rest by the app layer if present
+  enabled     Boolean  @default(true)
+  freeTier    Boolean  @default(true)
+  tier        String   @default("free") // "free" | "paid"
+  priority    Int      @default(100) // lower = higher priority
+  categories  String   @default("") // csv: "tvl,fees,revenue,market"
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("providers")
+}
+
+// ─── Projects / Assets ────────────────────────────────────────────
+model Project {
+  id            String   @id @default(cuid())
+  // external identity
+  coingeckoId   String?
+  defillamaSlug String?
+  symbol        String
+  name          String
+  // classification
+  category      String?  // "Perp DEX" | "Lending" | "Liquid Staking" ...
+  chains        String   @default("") // csv
+  // value-accrual thesis kind (drives conditional SAR gate)
+  accrualKind   String   @default("fee") // "fee" | "buyback_burn" | "staking" | "revenue_share"
+  // cache of latest computed scores
+  lastIARaw       Float?
+  lastIAEffective Float?
+  lastIAFinal     Float?
+  lastConfidence  Float?
+  lastRegime      Float?
+  lastPQ          Float?
+  lastTQ          Float?
+  lastVA          Float?
+  lastV           Float?
+  lastR           Float?
+  lastGatePassed  Boolean?
+  lastDecision    String? // BUY | WATCH | INVESTIGATE | AVOID | REJECT
+  lastScannedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  metrics   Metric[]
+  evidence  Evidence[]
+  theses    Thesis[]
+  scanRows  ScanRow[]
+
+  @@index([symbol])
+  @@map("projects")
+}
+
+// ─── Raw / Normalized Metrics (time-series) ───────────────────────
+model Metric {
+  id          String   @id @default(cuid())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  key         String   // "tvl" | "fees_24h" | "revenue_24h" | "mc" | "fdv" | "float" | "unlock_12m" ...
+  value       Float
+  unit        String   @default("usd")
+  asOf        DateTime
+  sourceId    String?  // provider slug
+  confidence  Float    @default(1.0)
+  createdAt   DateTime @default(now())
+
+  @@unique([projectId, key, asOf])
+  @@index([projectId, key])
+  @@map("metrics")
+}
+
+// ─── Evidence Graph ───────────────────────────────────────────────
+// Each evidence node ties a claim/metric to a source with freshness + grade.
+model Evidence {
+  id          String   @id @default(cuid())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  kind        String   // "claim" | "metric" | "risk"
+  label       String   // human label
+  value       String?  // serialised value (number/string/json)
+  sourceId    String?  // provider slug or url
+  sourceLabel String?
+  url         String?
+  timestamp   DateTime
+  freshnessH  Float?   // hours since the source published
+  confidence  Float    @default(0.85)
+  grade       String   @default("B") // "A" | "B" | "C" | "D"
+  sentiment   String   @default("neutral") // "positive" | "neutral" | "negative"
+  contradictionIds String @default("") // csv of other evidence ids that contradict
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, kind])
+  @@map("evidence")
+}
+
+// ─── Thesis (V1.4 hook — reserved) ───────────────────────────────
+model Thesis {
+  id          String   @id @default(cuid())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  title       String
+  whyWorks    String   @default("") // markdown / csv
+  mustStayTrue String  @default("")
+  whatBreaks  String   @default("")
+  statusPct   Float    @default(100) // % intact
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("theses")
+}
+
+// ─── Scan runs (market-wide discovery) ───────────────────────────
+model Scan {
+  id          String   @id @default(cuid())
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+  assetCount  Int      @default(0)
+  passedCount Int      @default(0)
+  rejectedCount Int    @default(0)
+  status      String   @default("running") // "running" | "done" | "failed"
+  note        String?
+  rows        ScanRow[]
+
+  @@map("scans")
+}
+
+model ScanRow {
+  id          String   @id @default(cuid())
+  scan        Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scanId      String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  rankFund    Int?
+  rankConf    Int?
+  rankEff     Int?
+  rankMkt     Int?
+  iaRaw       Float?
+  iaEffective Float?
+  iaFinal     Float?
+  confidence  Float?
+  gatePassed  Boolean  @default(false)
+  decision    String?
+
+  @@index([scanId])
+  @@index([projectId])
+  @@map("scan_rows")
+}
+
+// ─── News / Social feed sources (future hooks, reserved) ─────────
+model FeedSource {
+  id          String   @id @default(cuid())
+  kind        String   // "rss" | "telegram" | "x"
+  name        String
+  address     String   // url / handle
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       FeedItem[]
+
+  @@map("feed_sources")
+}
+
+model FeedItem {
+  id          String   @id @default(cuid())
+  source      FeedSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId    String
+  externalId  String
+  title       String
+  body        String?
+  url         String?
+  publishedAt DateTime
+  ingestedAt  DateTime @default(now())
+
+  @@unique([sourceId, externalId])
+  @@map("feed_items")
+}
