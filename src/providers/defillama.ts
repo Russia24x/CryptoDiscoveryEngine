@@ -1,8 +1,15 @@
 /**
  * DeFiLlama provider — free, key-less.
- * Endpoints: https://api.llama.fi and https://coins.llama.fi
+ * Endpoints: https://api.llama.fi
  *
- * Provides: TVL, fees, revenue (via DefiLlama fees API), protocol list.
+ * Provides: TVL, fees, revenue, protocol list.
+ *
+ * API NOTES (verified 2026-08-15):
+ * - /protocols returns an array of 8000+ protocols with TVL, symbol, category.
+ * - /overview/fees?all=true returns a DICT (not array!) with:
+ *     { totalDataChart, breakdown24h, protocols: [...2571 items] }
+ *   Each protocol in fees has: total24h, annualized1y, total7d, etc.
+ *   Field names are total24h (not fees_24h), annualized1y (not revenue_24h).
  */
 import {
   type DataProvider,
@@ -19,18 +26,19 @@ interface LLProtocol {
   category: string;
   chains: string[];
   tvl?: number;
-  chainTvls?: Record<string, number>;
 }
 
 interface LLFeesProtocol {
-  id: string;
   name: string;
-  symbol?: string;
-  defillamaSlug?: string;
-  fees_24h?: number;
-  revenue_24h?: number;
-  fees_7d?: number;
-  revenue_7d?: number;
+  total24h?: number;      // total fees/revenue 24h (USD)
+  annualized1y?: number;  // annualized fees (USD) — this is our PR/PC estimate
+  total7d?: number;
+}
+
+interface LLFeesResponse {
+  protocols?: LLFeesProtocol[];
+  total24h?: number;
+  // other fields: totalDataChart, breakdown24h, etc. — not needed here
 }
 
 export const defillamaProvider: DataProvider = {
@@ -48,23 +56,32 @@ export const defillamaProvider: DataProvider = {
     return true; // key-less
   },
   async listProtocols(ctx: ProviderContext): Promise<ProtocolSummary[]> {
-    const data = await safeJsonFetch<LLProtocol[]>(
+    // 1. Fetch protocol list (array of 8000+ with TVL)
+    const protocols = await safeJsonFetch<LLProtocol[]>(
       "https://api.llama.fi/protocols",
       ctx,
     );
-    if (!data) return [];
-    const fees = await safeJsonFetch<LLFeesProtocol[]>(
+    if (!protocols) return [];
+
+    // 2. Fetch fees data (DICT with .protocols array inside)
+    const feesData = await safeJsonFetch<LLFeesResponse>(
       "https://api.llama.fi/overview/fees?all=true",
       ctx,
     );
+    const feesProtocols = feesData?.protocols ?? [];
     const feesMap = new Map<string, LLFeesProtocol>();
-    if (fees) for (const f of fees) feesMap.set((f.name || "").toLowerCase(), f);
+    for (const f of feesProtocols) {
+      feesMap.set((f.name || "").toLowerCase(), f);
+    }
 
-    return data
-      .filter((p) => p && p.symbol)
-      .slice(0, 400)
+    // 3. Merge: join protocols (TVL) with fees (annualized revenue)
+    return protocols
+      .filter((p) => p && p.symbol && p.tvl)
+      .slice(0, 400) // keep top 400 by TVL (API returns sorted)
       .map<ProtocolSummary>((p) => {
         const f = feesMap.get((p.name || "").toLowerCase());
+        const annualRev = f?.annualized1y ?? 0;
+        const dailyFees = f?.total24h ?? 0;
         return {
           symbol: (p.symbol || "").toUpperCase(),
           name: p.name,
@@ -72,10 +89,12 @@ export const defillamaProvider: DataProvider = {
           category: p.category,
           chains: p.chains,
           tvl: p.tvl,
-          fees24h: f?.fees_24h,
-          revenue24h: f?.revenue_24h,
+          fees24h: dailyFees,      // daily fees (USD)
+          revenue24h: annualRev / 365, // daily revenue from annualized (USD)
         };
-      });
+      })
+      // Only keep protocols that have EITHER TVL OR fees data
+      .filter((p) => (p.tvl ?? 0) > 0 || (p.fees24h ?? 0) > 0);
   },
   async getProtocol(
     symbol: string,
@@ -86,7 +105,8 @@ export const defillamaProvider: DataProvider = {
       (p) => p.symbol.toUpperCase() === symbol.toUpperCase(),
     );
     if (!hit) return null;
-    // annualise 24h fees/revenue × 365 as a first-order estimate
+    // Use annualized revenue as PR (Protocol Revenue)
+    // Fees (24h × 365) as PC (Protocol Capture — fees captured by protocol)
     const pr = (hit.revenue24h ?? 0) * 365;
     const pc = (hit.fees24h ?? 0) * 365;
     return {

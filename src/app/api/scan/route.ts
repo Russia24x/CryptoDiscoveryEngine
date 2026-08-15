@@ -76,16 +76,18 @@ async function runLiveScan(): Promise<ScanResponse> {
         map.set(p.symbol, { symbol: p.symbol, name: p.name, mc: p.mc, fdv: p.fdv, coingeckoId: p.coingeckoId });
       }
     }
-    // Derive engine inputs from the merged data (first-order estimate).
+    // Derive engine inputs from the merged data.
+    // Only include assets that have EITHER fees/revenue data OR market cap.
+    // Skip assets with no data at all (would produce garbage engine inputs).
     const inputs = Array.from(map.values())
-      .filter((p) => (p.mc ?? 0) > 0)
+      .filter((p) => (p.fees24h ?? 0) > 0 || (p.revenue24h ?? 0) > 0 || (p.mc ?? 0) > 0)
       .slice(0, 80)
       .map((p) => {
-        const pr = (p.revenue24h ?? 0) * 365;
-        const pc = (p.fees24h ?? 0) * 365;
-        // Without tokenholder-capture data from free APIs, we estimate TC as a
-        // fraction of PC. This is explicitly flagged via low confidence.
-        const tcEstimate = pc * 0.18;
+        const pr = (p.revenue24h ?? 0) * 365;  // annualised revenue
+        const pc = (p.fees24h ?? 0) * 365;     // annualised fees (protocol capture)
+        // Without tokenholder-capture data from free APIs, estimate TC as 15% of PC.
+        // This is explicitly flagged via low confidence (C=0.70 floor).
+        const tc = pc * 0.15;
         const float = p.mc ?? 1;
         const unlock12m = float * 0.05; // assumed 5% unless known
         const emission12m = float * 0.02;
@@ -94,9 +96,9 @@ async function runLiveScan(): Promise<ScanResponse> {
           name: p.name,
           category: p.category ?? "Unknown",
           accrualKind: "fee" as const,
-          pr: pr || float * 0.05,
-          pc: pc || pr * 0.8,
-          tc: tcEstimate,
+          pr: pr || (p.tvl ?? 0) * 0.03 || float * 0.02,  // fallback: 3% of TVL or 2% of MC
+          pc: pc || pr * 0.8 || float * 0.015,
+          tc,
           gea: (p.fees24h ?? 0) * 365,
           marketCap: p.mc ?? 0,
           fdv: p.fdv ?? p.mc ?? 0,
