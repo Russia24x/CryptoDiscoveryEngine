@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, TrendingUp, TrendingDown, Trophy } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/format";
 
 interface PeerPercentile {
@@ -48,7 +48,7 @@ function pctTextColor(p: number): string {
 
 export function BenchmarkPanel({ symbol }: { symbol: string }) {
   const t = useTranslations();
-  const { data, isLoading } = useQuery<{ benchmark: Benchmark }>({
+  const { data, isLoading, isError } = useQuery<{ benchmark: Benchmark }>({
     queryKey: ["benchmark", symbol],
     queryFn: async () => {
       const r = await fetch(`/api/benchmark/${symbol}`);
@@ -74,7 +74,24 @@ export function BenchmarkPanel({ symbol }: { symbol: string }) {
     );
   }
 
-  if (!b) return null;
+  if (isError || !b) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            {t("benchmark.title")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{t("benchmark.loadError")}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // relative IA gauge
   const relIA = b.relativeIA;

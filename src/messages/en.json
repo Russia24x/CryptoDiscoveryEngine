@@ -179,7 +179,8 @@
     "peerCount": "{count} peers",
     "vsPeers": "vs peers",
     "legendHigh": "higher = better",
-    "legendLow": "lower = better"
+    "legendLow": "lower = better",
+    "loadError": "Benchmark data could not be loaded."
   },
   "compare": {
     "title": "Asset Comparison",
@@ -212,6 +213,7 @@
     "broken": "broken",
     "now": "now",
     "threshold": "threshold",
-    "hint": "A living thesis — each time data arrives, the system asks: did this strengthen, weaken, or invalidate?"
+    "hint": "A living thesis — each time data arrives, the system asks: did this strengthen, weaken, or invalidate?",
+    "loadError": "Thesis could not be loaded."
   }
 }

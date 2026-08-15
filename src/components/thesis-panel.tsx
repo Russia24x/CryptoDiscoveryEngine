@@ -57,7 +57,7 @@ function statusBadgeClass(label: Thesis["statusLabel"]): string {
 
 export function ThesisPanel({ symbol }: { symbol: string }) {
   const t = useTranslations();
-  const { data, isLoading } = useQuery<{ thesis: Thesis }>({
+  const { data, isLoading, isError } = useQuery<{ thesis: Thesis }>({
     queryKey: ["thesis", symbol],
     queryFn: async () => {
       const r = await fetch(`/api/thesis/${symbol}`);
@@ -82,7 +82,24 @@ export function ThesisPanel({ symbol }: { symbol: string }) {
   }
 
   const th = data?.thesis;
-  if (!th) return null;
+  if (isError || !th) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            {t("thesis.title")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+            <AlertOctagon className="h-4 w-4 shrink-0" />
+            <span>{t("thesis.loadError")}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const stroke = statusColor(th.statusLabel);
   const circumference = 2 * Math.PI * 34; // r=34
