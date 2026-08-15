@@ -68,13 +68,15 @@ function deriveMustStayTrue(i: EngineInputs, r: EngineResult): ThesisCondition[]
   const c = r.components;
   const conds: ThesisCondition[] = [];
 
-  // Revenue must stay above a floor (50% of current PR)
-  const prFloor = i.pr * 0.5;
+  // Revenue must stay above a viability floor ($1M annualised). Below this,
+  // the revenue is too thin to support the investment thesis.
+  // (Was `i.pr > 0` — a tautology that always passed, inflating statusPct.)
+  const REVENUE_FLOOR = 1_000_000; // $1M annualised
   conds.push({
-    label: "Revenue > 50% of current (annualised)",
-    met: i.pr > 0,
+    label: "Revenue > $1M (viability floor)",
+    met: i.pr >= REVENUE_FLOOR,
     value: `$${(i.pr / 1e6).toFixed(1)}M`,
-    threshold: `> $${(prFloor / 1e6).toFixed(1)}M`,
+    threshold: `> $${(REVENUE_FLOOR / 1e6).toFixed(1)}M`,
   });
 
   // Distribution rate must stay meaningful (δ > 20%)

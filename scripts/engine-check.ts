@@ -199,6 +199,16 @@ assert("Thesis statusLabel matches statusPct threshold", thesis.statusLabel === 
 // buyback_burn fixture must include the SAR condition
 assert("Thesis (buyback_burn) includes SAR condition", thesis.mustStayTrue.some((c) => c.label.includes("Supply absorption")), "SAR condition should appear for buyback_burn thesis");
 
+// 12. Thesis revenue condition is non-tautological — it must be able to FAIL.
+// Build a fixture with PR below the $1M viability floor and verify the
+// revenue condition is unmet. (Guard against the tautological `i.pr > 0` bug.)
+const lowRevInput: EngineInputs = { ...fixture, symbol: "LOWREV", pr: 500_000 };
+const lowRevResult = runEngine(lowRevInput);
+const lowRevThesis = deriveThesis(lowRevInput, lowRevResult);
+const lowRevRevCond = lowRevThesis.mustStayTrue.find((c) => c.label.includes("Revenue"));
+assert("Thesis revenue condition can FAIL (non-tautological)", lowRevRevCond?.met === false, `expected met=false for PR<$1M, got met=${lowRevRevCond?.met}`);
+assert("Thesis with low revenue → status < 100%", lowRevThesis.statusPct < 100, `expected <100% with a failed condition, got ${lowRevThesis.statusPct}%`);
+
 console.log("─".repeat(50));
 if (failures === 0) {
   console.log("✓ All engine checks passed.");
