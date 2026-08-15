@@ -34,6 +34,7 @@ import {
 import type { RankedRow } from "@/engine/ranking";
 import { cn, decisionClass, fmtScore } from "@/lib/format";
 import { DecisionBadge } from "./decision-badge";
+import { TrendCell } from "./trend-cell";
 
 type ScanResp = {
   mode: "live" | "demo";
@@ -214,6 +215,7 @@ export function DiscoveryView({
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colEff")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colMkt")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colIAFinal")}</th>
+                  <th className="py-2.5 px-3 text-center font-medium hidden lg:table-cell">{t("discovery.colTrend")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colGate")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colDecision")}</th>
                 </tr>
@@ -222,7 +224,7 @@ export function DiscoveryView({
                 {isLoading &&
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td colSpan={10} className="py-3 px-3">
+                      <td colSpan={11} className="py-3 px-3">
                         <Skeleton className="h-9 w-full" />
                       </td>
                     </tr>
@@ -285,6 +287,9 @@ export function DiscoveryView({
                             </div>
                           </div>
                         </td>
+                        <td className="py-3 px-3 text-center hidden lg:table-cell">
+                          <TrendCell symbol={r.symbol} />
+                        </td>
                         <td className="py-3 px-3 text-center">
                           {passed ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 inline" />
@@ -307,7 +312,7 @@ export function DiscoveryView({
                   })}
                 {!isLoading && isError && (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center">
+                    <td colSpan={11} className="py-10 text-center">
                       <div className="flex flex-col items-center gap-2 text-sm">
                         <AlertTriangle className="h-5 w-5 text-red-500" />
                         <span className="text-red-600 dark:text-red-400 font-medium">
@@ -323,7 +328,7 @@ export function DiscoveryView({
                 )}
                 {!isLoading && !isError && rows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-muted-foreground text-sm">
+                    <td colSpan={11} className="py-10 text-center text-muted-foreground text-sm">
                       {t("discovery.noResults")}
                     </td>
                   </tr>

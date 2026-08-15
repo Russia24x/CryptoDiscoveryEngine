@@ -162,7 +162,8 @@ export async function GET(req: Request) {
   const mode = url.searchParams.get("mode") ?? "demo";
   const body = mode === "live" ? await runLiveScan() : runDemoScan();
 
-  // persist scan record (best effort)
+  // persist scan record + per-asset ScanRows (best effort, non-blocking to response).
+  // This builds the historical time-series that powers trend sparklines.
   try {
     const scan = await db.scan.create({
       data: {
@@ -174,9 +175,82 @@ export async function GET(req: Request) {
         note: body.note ?? body.mode,
       },
     });
-    void scan;
-  } catch {
-    // db optional
+
+    // Upsert projects + create scan rows in a single transaction.
+    await db.$transaction(
+      body.rows.map((r) =>
+        db.project.upsert({
+          where: { symbol: r.symbol },
+          create: {
+            symbol: r.symbol,
+            name: r.name,
+            category: r.category,
+            accrualKind: "fee",
+            lastIARaw: r.result.iaRaw,
+            lastIAEffective: r.result.iaEffective,
+            lastIAFinal: r.result.iaFinal,
+            lastConfidence: r.result.confidence,
+            lastRegime: r.result.regime,
+            lastPQ: r.result.components.pq,
+            lastTQ: r.result.components.tq,
+            lastVA: r.result.components.va,
+            lastV: r.result.components.v,
+            lastR: r.result.components.r,
+            lastGatePassed: r.result.gate.passed,
+            lastDecision: r.result.decision,
+            lastScannedAt: new Date(),
+          },
+          update: {
+            name: r.name,
+            category: r.category,
+            lastIARaw: r.result.iaRaw,
+            lastIAEffective: r.result.iaEffective,
+            lastIAFinal: r.result.iaFinal,
+            lastConfidence: r.result.confidence,
+            lastRegime: r.result.regime,
+            lastPQ: r.result.components.pq,
+            lastTQ: r.result.components.tq,
+            lastVA: r.result.components.va,
+            lastV: r.result.components.v,
+            lastR: r.result.components.r,
+            lastGatePassed: r.result.gate.passed,
+            lastDecision: r.result.decision,
+            lastScannedAt: new Date(),
+          },
+        }),
+      ),
+    );
+
+    // Re-fetch the upserted projects to get their ids, then create scan rows.
+    const projects = await db.project.findMany({
+      where: { symbol: { in: body.rows.map((r) => r.symbol) } },
+      select: { id: true, symbol: true },
+    });
+    const projIdBySymbol = new Map(projects.map((p) => [p.symbol, p.id]));
+
+    await db.scanRow.createMany({
+      data: body.rows
+        .map((r) => {
+          const pid = projIdBySymbol.get(r.symbol);
+          if (!pid) return null;
+          return {
+            scanId: scan.id,
+            projectId: pid,
+            iaRaw: r.result.iaRaw,
+            iaEffective: r.result.iaEffective,
+            iaFinal: r.result.iaFinal,
+            confidence: r.result.confidence,
+            gatePassed: r.result.gate.passed,
+            decision: r.result.decision,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null),
+    });
+  } catch (e) {
+    // db is optional — scan still returns results to the user.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[scan] persistence failed:", e instanceof Error ? e.message : e);
+    }
   }
 
   return NextResponse.json(body);

@@ -39,7 +39,7 @@ model Project {
   // external identity
   coingeckoId   String?
   defillamaSlug String?
-  symbol        String
+  symbol        String   @unique
   name          String
   // classification
   category      String?  // "Perp DEX" | "Lending" | "Liquid Staking" ...

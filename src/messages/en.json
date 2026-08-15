@@ -68,7 +68,8 @@
     "noResults": "Run a scan to see ranked assets.",
     "clickHint": "Click a row to open the full explainable decision.",
     "error": "Scan failed to load",
-    "retry": "Retry"
+    "retry": "Retry",
+    "colTrend": "Trend"
   },
   "decision": {
     "BUY": "BUY",
@@ -149,7 +150,16 @@
     "language": "Language",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "providerUpdated": "Provider updated",
+    "keySaved": "API key saved",
+    "feedAdded": "Feed source added",
+    "removed": "Removed",
+    "providerAdded": "Provider added",
+    "updateFailed": "Update failed",
+    "saveFailed": "Save failed",
+    "addFailed": "Add failed",
+    "removeFailed": "Remove failed"
   },
   "footer": {
     "rights": "Crypto Investment Decision Engine",

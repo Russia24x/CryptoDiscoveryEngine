@@ -85,9 +85,9 @@ export function SettingsView() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
-      toast.success("Provider updated");
+      toast.success(t("settings.providerUpdated"));
     },
-    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
+    onError: (e) => toast.error(`${t("settings.updateFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   const saveKey = useMutation({
@@ -103,9 +103,9 @@ export function SettingsView() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
-      toast.success("API key saved");
+      toast.success(t("settings.keySaved"));
     },
-    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
+    onError: (e) => toast.error(`${t("settings.saveFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   const addFeed = useMutation({
@@ -121,9 +121,9 @@ export function SettingsView() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
-      toast.success("Feed source added");
+      toast.success(t("settings.feedAdded"));
     },
-    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
+    onError: (e) => toast.error(`${t("settings.addFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   const deleteFeed = useMutation({
@@ -133,9 +133,9 @@ export function SettingsView() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feeds"] });
-      toast.success("Removed");
+      toast.success(t("settings.removed"));
     },
-    onError: (e) => toast.error(`Failed: ${e instanceof Error ? e.message : e}`),
+    onError: (e) => toast.error(`${t("settings.removeFailed")}: ${e instanceof Error ? e.message : e}`),
   });
 
   return (
@@ -365,7 +365,7 @@ function AddProviderForm({ onDone }: { onDone: () => void }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
-      toast.success("Provider added");
+      toast.success(t("settings.providerAdded"));
       onDone();
     },
   });
