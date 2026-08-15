@@ -15,6 +15,17 @@ interface ScanResponse {
   note?: string;
 }
 
+// Deterministic string hash → 32-bit int. Used to seed demo-mode trend jitter
+// so each scan produces a stable-but-varying value per symbol (realistic trend).
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 async function runLiveScan(): Promise<ScanResponse> {
   try {
     // Use the provider registry — the canonical path. Any registered provider
@@ -233,12 +244,27 @@ export async function GET(req: Request) {
         .map((r) => {
           const pid = projIdBySymbol.get(r.symbol);
           if (!pid) return null;
+          // For DEMO mode only: the engine inputs are deterministic, so the
+          // trend sparkline would always be flat. Apply a small seeded jitter
+          // to the PERSISTED values (not the returned body — users still see
+          // accurate scores). The jitter is seeded by symbol+scanId so it's
+          // stable per scan but varies across scans → realistic-looking trends.
+          let persistRaw = r.result.iaRaw;
+          let persistEff = r.result.iaEffective;
+          let persistFin = r.result.iaFinal;
+          if (body.mode === "demo") {
+            const seed = hashStr(r.symbol + scan.id);
+            const drift = ((seed % 200) - 100) / 1000; // ±10% drift
+            persistRaw = Math.max(0, r.result.iaRaw * (1 + drift));
+            persistEff = persistRaw * r.result.confidence;
+            persistFin = persistEff * r.result.regime;
+          }
           return {
             scanId: scan.id,
             projectId: pid,
-            iaRaw: r.result.iaRaw,
-            iaEffective: r.result.iaEffective,
-            iaFinal: r.result.iaFinal,
+            iaRaw: persistRaw,
+            iaEffective: persistEff,
+            iaFinal: persistFin,
             confidence: r.result.confidence,
             gatePassed: r.result.gate.passed,
             decision: r.result.decision,

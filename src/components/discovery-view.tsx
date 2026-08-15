@@ -34,7 +34,12 @@ import {
 import type { RankedRow } from "@/engine/ranking";
 import { cn, decisionClass, fmtScore } from "@/lib/format";
 import { DecisionBadge } from "./decision-badge";
-import { TrendCell } from "./trend-cell";
+import { Sparkline } from "./sparkline";
+
+interface TrendPoint {
+  t: string | null;
+  iaFinal: number;
+}
 
 type ScanResp = {
   mode: "live" | "demo";
@@ -72,6 +77,25 @@ export function DiscoveryView({
 
   // max IA final for relative bar scaling
   const maxIAFinal = Math.max(...rows.map((r) => r.result.iaFinal), 1);
+
+  // Batch-fetch trends for ALL rows in one request (avoids N+1 per-row fetches).
+  const symbols = rows.map((r) => r.symbol);
+  const { data: trendData } = useQuery<{ trends: Record<string, TrendPoint[]> }>({
+    queryKey: ["trends-batch", symbols.join(",")],
+    queryFn: async () => {
+      if (!symbols.length) return { trends: {} };
+      const r = await fetch("/api/trend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbols }),
+      });
+      if (!r.ok) return { trends: {} };
+      return r.json();
+    },
+    enabled: symbols.length > 0,
+    staleTime: 60_000,
+  });
+  const trendBySymbol = trendData?.trends ?? {};
 
   return (
     <div className="space-y-6">
@@ -288,7 +312,11 @@ export function DiscoveryView({
                           </div>
                         </td>
                         <td className="py-3 px-3 text-center hidden lg:table-cell">
-                          <TrendCell symbol={r.symbol} />
+                          <Sparkline
+                            values={(trendBySymbol[r.symbol] ?? []).map((p) => p.iaFinal)}
+                            width={48}
+                            height={16}
+                          />
                         </td>
                         <td className="py-3 px-3 text-center">
                           {passed ? (
