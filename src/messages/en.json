@@ -215,5 +215,21 @@
     "threshold": "threshold",
     "hint": "A living thesis — each time data arrives, the system asks: did this strengthen, weaken, or invalidate?",
     "loadError": "Thesis could not be loaded."
+  },
+  "feedsView": {
+    "title": "News & Social",
+    "subtitle": "News and social signals from RSS, Telegram, and X. Add sources in Settings — ingestion converts news → thesis impact.",
+    "sources": "Feed Sources",
+    "noSources": "No feed sources yet. Add one in Settings, or use the form below.",
+    "addHere": "Add a source here",
+    "items": "Recent Items",
+    "noItems": "No items ingested yet. Feed ingestion lands in a future version — sources can be configured now.",
+    "ingestionPending": "Ingestion pending",
+    "lastUpdated": "Last updated",
+    "source": "Source",
+    "kind": "Type",
+    "address": "Address",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   }
 }

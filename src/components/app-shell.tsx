@@ -7,12 +7,13 @@ import { AppFooter } from "./app-footer";
 import { DiscoveryView } from "./discovery-view";
 import { DetailView } from "./detail-view";
 import { ComparisonView } from "./comparison-view";
+import { FeedsView } from "./feeds-view";
 import { SettingsView } from "./settings-view";
 import type { RankedRow } from "@/engine/ranking";
 import { AnimatePresence, motion } from "framer-motion";
 import { Compass, Settings as SettingsIcon, FileText } from "lucide-react";
 
-export type View = "discovery" | "compare" | "settings";
+export type View = "discovery" | "compare" | "feeds" | "settings";
 
 export function AppShell() {
   const t = useTranslations();
@@ -52,6 +53,17 @@ export function AppShell() {
                 transition={{ duration: 0.25 }}
               >
                 <ComparisonView />
+              </motion.div>
+            )}
+            {view === "feeds" && (
+              <motion.div
+                key="feeds"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                <FeedsView />
               </motion.div>
             )}
             {view === "settings" && (
