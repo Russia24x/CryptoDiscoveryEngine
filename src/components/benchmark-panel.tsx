@@ -97,6 +97,7 @@ export function BenchmarkPanel({ symbol }: { symbol: string }) {
   const relIA = b.relativeIA;
   const gaugeColor = relIA >= 70 ? "text-emerald-500" : relIA >= 50 ? "text-amber-500" : "text-red-500";
   const gaugeStroke = relIA >= 70 ? "#10b981" : relIA >= 50 ? "#f59e0b" : "#ef4444";
+  const circumference = 2 * Math.PI * 34; // r=34 — must match the <circle r="34">
 
   return (
     <Card>
@@ -118,7 +119,7 @@ export function BenchmarkPanel({ symbol }: { symbol: string }) {
               <circle
                 cx="40" cy="40" r="34" fill="none" stroke={gaugeStroke} strokeWidth="6"
                 strokeLinecap="round"
-                strokeDasharray={`${(relIA / 100) * 213.6} 213.6`}
+                strokeDasharray={`${(relIA / 100) * circumference} ${circumference}`}
                 className="transition-all duration-700"
               />
             </svg>
