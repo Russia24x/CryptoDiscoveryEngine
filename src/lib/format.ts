@@ -1,10 +1,9 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import type { Decision } from "@/engine";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Re-export cn from utils.ts (single source of truth) so app components that
+// import from @/lib/format get both cn and the format helpers in one import.
+// shadcn ui components import cn directly from @/lib/utils.
+export { cn } from "@/lib/utils";
 
 export function fmtUsd(n: number): string {
   if (!isFinite(n)) return "—";
