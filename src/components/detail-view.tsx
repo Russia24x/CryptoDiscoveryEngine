@@ -25,15 +25,18 @@ import {
   Sparkles,
   Scale,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
 import type { EngineInputs, EngineResult } from "@/engine";
 import { cn, fmtUsd, fmtPct, fmtScore, barColor01, scoreColor01 } from "@/lib/format";
+import { useLocalStorage } from "@/lib/use-local-storage";
 import { DecisionBadge } from "./decision-badge";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { ThesisPanel } from "./thesis-panel";
 import { TechnicalPanel } from "./technical-panel";
 import { CoinInfoPanel } from "./coin-info-panel";
+import { PriceChartCard } from "./price-chart-card";
 
 interface DetailResp {
   input: EngineInputs;
@@ -55,9 +58,11 @@ interface DetailResp {
 export function DetailView({
   row,
   onBack,
+  onAddToCompare,
 }: {
   row: RankedRow;
   onBack: () => void;
+  onAddToCompare?: (symbol: string) => void;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -76,6 +81,17 @@ export function DetailView({
   const result = data?.result ?? row.result;
   const c = result.components;
 
+  // Compare-set state (localStorage-backed, SSR-safe via useSyncExternalStore).
+  const [compareSet, setCompareSet] = useLocalStorage<string[]>("compare-set", []);
+  const compareAdded = compareSet.includes(row.symbol);
+
+  const handleAddToCompare = () => {
+    setCompareSet((prev) =>
+      prev.includes(row.symbol) ? prev : [...prev, row.symbol],
+    );
+    onAddToCompare?.(row.symbol);
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -84,7 +100,30 @@ export function DetailView({
           <BackIcon className="h-4 w-4" />
           {t("detail.back")}
         </Button>
-        <DecisionBadge decision={result.decision} />
+        <div className="flex items-center gap-2">
+          {onAddToCompare && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddToCompare}
+              disabled={compareAdded}
+              className="gap-1.5"
+            >
+              {compareAdded ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  {t("detail.addedToCompare")}
+                </>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  {t("detail.addToCompare")}
+                </>
+              )}
+            </Button>
+          )}
+          <DecisionBadge decision={result.decision} />
+        </div>
       </div>
 
       {/* Title block — REMOVED, merged into CoinInfoPanel */}
@@ -373,6 +412,9 @@ export function DetailView({
 
           {/* Investment Thesis (V1.4) */}
           <ThesisPanel symbol={row.symbol} />
+
+          {/* Price Chart — works for ALL assets (CoinPaprika-backed, not Binance-only) */}
+          <PriceChartCard symbol={row.symbol} />
 
           {/* Technical Analysis (TAF Framework) */}
           <TechnicalPanel symbol={row.symbol} />

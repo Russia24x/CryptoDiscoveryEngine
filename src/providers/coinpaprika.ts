@@ -158,3 +158,50 @@ export async function getFullCoinData(
   if (!coin && !ticker) return null;
   return { coin, ticker, events };
 }
+
+/**
+ * Historical price point returned by CoinPaprika's /tickers/{id}/historical
+ * endpoint (free tier). NOTE: the free tier returns a single `price` per
+ * interval (daily close), NOT full OHLC candles. The `price_open`/`price_high`
+ * /`price_low`/`price_close` fields are only available on paid plans.
+ */
+export interface CoinPaprikaCandle {
+  timestamp: string;       // ISO timestamp (e.g. "2026-08-12T00:00:00Z")
+  price: number;           // daily close price (USD)
+  volume_24h: number;      // 24h trade volume
+  market_cap: number;       // market cap at close
+}
+
+/**
+ * Fetch historical price history for a coin.
+ *
+ * Free-tier limit: only allows recent data (start date can't be in the past
+ * beyond a threshold). We use interval=1d for charting — perfect for the
+ * 7d/30d/90d/1y timeframes exposed by the PriceChartCard.
+ *
+ * Returns points oldest→newest (chart-friendly).
+ */
+export async function getHistoricalOHLCV(
+  symbol: string,
+  opts: { days?: number; interval?: "1d" | "1h" } = {},
+  ctx: { fetch?: typeof fetch } = {},
+): Promise<{ candles: CoinPaprikaCandle[]; paprikaId: string }> {
+  const days = Math.min(opts.days ?? 30, 365);
+  const interval = opts.interval ?? "1d";
+  const paprikaId = await findCoinId(symbol, ctx);
+  if (!paprikaId) return { candles: [], paprikaId: "" };
+
+  // CoinPaprika historical endpoint. start = now - days, end = now.
+  const end = new Date();
+  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+
+  const url = `${PAPRIKA_BASE}/tickers/${paprikaId}/historical?start=${encodeURIComponent(fmt(start))}&end=${encodeURIComponent(fmt(end))}&interval=${interval}`;
+
+  const data = await safeJsonFetch<CoinPaprikaCandle[] | null>(url, ctx);
+  // Sort oldest→newest for charting.
+  const candles = (data ?? []).sort(
+    (a, b) => +new Date(a.timestamp) - +new Date(b.timestamp),
+  );
+  return { candles, paprikaId };
+}

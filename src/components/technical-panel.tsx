@@ -100,10 +100,23 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
     queryFn: async () => {
       const r = await fetch(`/api/technical/${symbol}?interval=1d&limit=365`);
       const json = await r.json();
-      if (!r.ok) throw new Error(json.message || json.error || "failed");
+      if (!r.ok) {
+        // Attach status so retry predicate can short-circuit 404s.
+        const e = new Error(json.message || json.error || "failed") as Error & { status?: number };
+        e.status = r.status;
+        throw e;
+      }
       return json;
     },
-    retry: 1,
+    // Don't retry 404/422 responses (asset not on Binance, or insufficient
+    // data). Retrying them caused duplicate 404s in the network log and
+    // delayed the error-state render by ~1s per retry.
+    retry: (err: unknown) => {
+      const status = (err as { status?: number })?.status;
+      if (status === 404 || status === 422) return false;
+      return true;
+    },
+    retryDelay: 0,
   });
 
   if (isLoading) {
@@ -123,11 +136,12 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
 
   if (isError || !data?.analysis) {
     let errorMsg = t("technical.fetchError");
-    // react-query error can be an Error or a string
+    // react-query error can be an Error (with optional status) or a string
     const errStr = error instanceof Error
       ? error.message
       : typeof error === "string" ? error : "";
-    if (errStr.includes("not listed on Binance") || errStr.includes("not_on_binance")) {
+    const errStatus = (error as { status?: number })?.status;
+    if (errStatus === 404 || errStr.includes("not listed on Binance") || errStr.includes("not_on_binance")) {
       errorMsg = t("technical.notOnBinance", { symbol });
     } else if (errStr.includes("Not enough") || errStr.includes("insufficient")) {
       errorMsg = t("technical.insufficientData");

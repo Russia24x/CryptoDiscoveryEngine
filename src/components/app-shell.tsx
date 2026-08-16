@@ -38,6 +38,10 @@ export function AppShell() {
                   <DetailView
                     row={selected}
                     onBack={() => setSelected(null)}
+                    onAddToCompare={() => {
+                      // Switch to compare view so the user can see the added asset.
+                      setView("compare");
+                    }}
                   />
                 ) : (
                   <DiscoveryView onSelect={setSelected} />
@@ -52,7 +56,7 @@ export function AppShell() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
               >
-                <ComparisonView />
+                <ComparisonView onGoToDiscovery={() => setView("discovery")} />
               </motion.div>
             )}
             {view === "feeds" && (

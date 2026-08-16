@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -22,11 +22,19 @@ import {
   Crown,
   AlertTriangle,
   RotateCw,
+  Database,
+  Compass,
 } from "lucide-react";
-import { getAllCachedInputs } from "@/lib/scan-cache";
-import type { EngineInputs } from "@/engine";
-import { cn, fmtScore, fmtUsd } from "@/lib/format";
+import { cn, fmtScore } from "@/lib/format";
+import { useLocalStorage } from "@/lib/use-local-storage";
 import { toast } from "sonner";
+
+interface CachedAsset {
+  symbol: string;
+  name: string;
+  category: string;
+  marketCap: number;
+}
 
 interface ComparisonCell {
   symbol: string;
@@ -69,9 +77,46 @@ function cellBg(pct: number): string {
   return "bg-red-500/15 border-red-500/40";
 }
 
-export function ComparisonView() {
+export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => void }) {
   const t = useTranslations();
-  const [selected, setSelected] = useState<string[]>(["HYPE", "AAVE", "GMX"]);
+  // Compare-set is shared with the detail view via localStorage. When the
+  // user clicks "Add to Compare" on any asset, this view re-renders and the
+  // newly-added symbol appears in `selected`.
+  const [lsCompareSet] = useLocalStorage<string[]>("compare-set", []);
+  const [manualSelected, setManualSelected] = useState<string[]>([]);
+
+  // Fetch the list of available assets from the server-side scan cache.
+  // (The client can't read the in-memory cache directly — this endpoint
+  // returns the cached symbols so the asset picker can render them, and
+  // so we can fall back to sensible defaults when the user hasn't picked 2+.)
+  const { data: assetsData } = useQuery<{ count: number; assets: CachedAsset[] }>({
+    queryKey: ["assets"],
+    queryFn: async () => {
+      const r = await fetch("/api/assets");
+      if (!r.ok) return { count: 0, assets: [] };
+      return r.json();
+    },
+    staleTime: 30_000, // 30s — the cache is process-scoped and stable
+  });
+  const cachedAssets = assetsData?.assets ?? [];
+  const cachedCount = assetsData?.count ?? 0;
+
+  // Selection priority:
+  // 1. localStorage compare-set (if ≥ 2 entries) — user explicitly added these
+  // 2. manual picks via the asset picker UI (if ≥ 2)
+  // 3. top 3 cached assets by market cap — sensible default so the view is
+  //    never empty on first load (after a scan has run)
+  const topCached = cachedAssets
+    .slice()
+    .sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0))
+    .slice(0, 3)
+    .map((a) => a.symbol);
+  const selected = lsCompareSet.length >= 2
+    ? lsCompareSet.slice(0, 5)
+    : manualSelected.length >= 2
+      ? manualSelected
+      : topCached;
+  const isUsingLS = lsCompareSet.length >= 2;
 
   const { data, isFetching, isError, refetch } = useQuery<{ comparison: ComparisonResult }>({
     queryKey: ["compare", selected.join(",")],
@@ -90,17 +135,33 @@ export function ComparisonView() {
   const comp = data?.comparison;
 
   const toggle = (sym: string) => {
-    setSelected((cur) => {
-      if (cur.includes(sym)) return cur.filter((s) => s !== sym);
-      if (cur.length >= 5) {
-        toast.error(t("compare.maxHint"));
-        return cur;
-      }
-      return [...cur, sym];
-    });
+    // When operating from localStorage source, the manual toggle still works:
+    // we copy the LS set into manual and remove/add from there, so the user
+    // can refine their selection without losing the LS-pushed entries.
+    const base = isUsingLS ? lsCompareSet.slice(0, 5) : manualSelected;
+    if (base.includes(sym)) {
+      setManualSelected(base.filter((s) => s !== sym));
+      return;
+    }
+    if (base.length >= 5) {
+      toast.error(t("compare.maxHint"));
+      return;
+    }
+    setManualSelected([...base, sym]);
   };
 
-  const clear = () => setSelected([]);
+  const clear = () => {
+    setManualSelected([]);
+    // Also clear the localStorage compare-set so it doesn't re-populate.
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem("compare-set");
+        window.dispatchEvent(new Event("ls:compare-set"));
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   // determine winners per row — best WITHIN the selected set (head-to-head),
   // not the global rank-1 across all peers. Ties share the win.
@@ -152,10 +213,7 @@ export function ComparisonView() {
               {t("compare.selectAssets")}
             </div>
             <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scroll-thin pe-1">
-              {((): EngineInputs[] => {
-                const cached = getAllCachedInputs();
-                return cached.length > 0 ? cached : [];
-              })().map((a, idx) => {
+              {cachedAssets.map((a) => {
                 const isSel = selected.includes(a.symbol);
                 const palette = PALETTE[selected.indexOf(a.symbol) % PALETTE.length];
                 return (
@@ -195,10 +253,44 @@ export function ComparisonView() {
       </div>
 
       {/* Results */}
-      {selected.length < 2 ? (
+      {cachedCount === 0 ? (
+        // Scan cache empty — the compare endpoint will 404 without cached inputs.
+        // Show a clear CTA instead of a confusing error.
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {t("compare.noData")}
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center gap-3 text-center max-w-md mx-auto">
+              <div className="rounded-full bg-amber-500/10 p-3">
+                <Database className="h-6 w-6 text-amber-500" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  {t("compare.needScanTitle")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("compare.needScanHint")}
+                </div>
+              </div>
+              {onGoToDiscovery && (
+                <Button variant="outline" size="sm" className="gap-2 h-8 mt-1" onClick={onGoToDiscovery}>
+                  <Compass className="h-3.5 w-3.5" />
+                  {t("compare.goToDiscovery")}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : selected.length < 2 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="rounded-full bg-muted p-3">
+                <GitCompare className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="text-sm font-medium">{t("compare.emptyTitle")}</div>
+              <div className="text-xs text-muted-foreground max-w-sm">
+                {t("compare.emptyHint")}
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : isError ? (
@@ -280,10 +372,7 @@ export function ComparisonView() {
                 {t("compare.metric")}
               </CardTitle>
               <CardDescription>
-                {t("benchmark.peerCount", { count: (() => {
-                const cached = getAllCachedInputs();
-                return cached.length > 0 ? cached.length : 0;
-              })() })}
+                {t("benchmark.peerCount", { count: cachedCount })}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">

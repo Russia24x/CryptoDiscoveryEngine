@@ -133,7 +133,9 @@
     "separationHint": "A great project with a bad token can still be a bad investment — and vice-versa.",
     "evidence": "Evidence Graph",
     "evidenceHint": "Every metric carries a source, timestamp, freshness, confidence and grade.",
-    "dataError": "Detail data could not be loaded — showing summary from scan only."
+    "dataError": "Detail data could not be loaded — showing summary from scan only.",
+    "addToCompare": "Add to Compare",
+    "addedToCompare": "Added to Compare"
   },
   "settings": {
     "title": "Data Providers",
@@ -217,7 +219,12 @@
     "iaFinal": "IA Final",
     "addFromScan": "Pick from scan results",
     "compareCta": "Compare selected",
-    "error": "Comparison failed to load"
+    "error": "Comparison failed to load",
+    "needScanTitle": "No scan has been run yet",
+    "needScanHint": "Run a market scan first so asset data is loaded into the cache for comparison.",
+    "goToDiscovery": "Go to Discovery Scanner",
+    "emptyTitle": "Select assets to compare",
+    "emptyHint": "Tap \"Add to Compare\" from any asset detail page, or click the assets below."
   },
   "thesis": {
     "title": "Investment Thesis",
@@ -326,5 +333,15 @@
     "atlDate": "ATL Date",
     "whitepaper": "Whitepaper",
     "parent": "Parent Protocol"
+  },
+  "priceChart": {
+    "title": "Price Chart",
+    "subtitle": "Historical price trend from CoinPaprika — works for all assets.",
+    "current": "Current price",
+    "high": "High",
+    "low": "Low",
+    "notAvailable": "No price history available for {symbol}.",
+    "periodLabel": "{days}-day period",
+    "points": "points"
   }
 }
