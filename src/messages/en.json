@@ -227,7 +227,9 @@
     "emptyHint": "Tap \"Add to Compare\" from any asset detail page, or click the assets below.",
     "removeAsset": "Remove {symbol} from comparison",
     "shareCompare": "Share comparison",
-    "shareCopied": "Comparison link copied to clipboard"
+    "shareCopied": "Comparison link copied to clipboard",
+    "metricWinner": "Metric Winner",
+    "winsCount": "Wins {wins} of {total} metrics"
   },
   "thesis": {
     "title": "Investment Thesis",

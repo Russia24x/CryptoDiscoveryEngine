@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -121,13 +121,28 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
   // `excluded` tracks symbols the user has removed via the X button on
   // summary cards. It applies to ALL sources so removed symbols stay gone
   // even when falling back to the top-cached default.
-  const [excluded, setExcluded] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
+  // Persisted to localStorage so it survives refreshes.
+  // On mount, also merge any ?exclude= URL param (from shared deep links).
+  const [excludedLs, setExcludedLs] = useLocalStorage<string[]>("compare-excluded", []);
+  // One-time merge of URL ?exclude= param into the LS excluded set.
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("exclude");
-    if (!raw) return new Set();
-    return new Set(raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean));
-  });
+    if (raw) {
+      const urlExcluded = raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+      if (urlExcluded.length > 0) {
+        setExcludedLs((prev) => Array.from(new Set([...prev, ...urlExcluded])));
+      }
+    }
+  }, [setExcludedLs]);
+  const excluded = new Set(excludedLs);
+  const setExcluded = (updater: (prev: Set<string>) => Set<string>) => {
+    setExcludedLs((prevArr) => {
+      const prev = new Set(prevArr);
+      const next = updater(prev);
+      return Array.from(next);
+    });
+  };
   const topCached = cachedAssets
     .slice()
     .sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0))
@@ -177,7 +192,7 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
 
   const clear = () => {
     setManualSelected([]);
-    setExcluded(new Set());
+    setExcluded(() => new Set());
     // Also clear the localStorage compare-set so it doesn't re-populate.
     if (typeof window !== "undefined") {
       try {
@@ -202,23 +217,34 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
     }
   };
 
-  // Share the current comparison as a URL deep link. Copies to clipboard
-  // and shows a toast. The URL uses ?compare=SYM1,SYM2,... so it can be
-  // parsed on load to pre-seed the selection.
+  // Share the current comparison as a URL deep link. Copies to clipboard,
+  // updates the browser address bar via history.replaceState (so the URL
+  // can be bookmarked), and shows a toast.
   const [shareCopied, setShareCopied] = useState(false);
   const shareCompare = async () => {
     if (typeof window === "undefined" || selected.length < 2) return;
     const url = new URL(window.location.href);
     url.searchParams.set("compare", selected.join(","));
+    if (excluded.size > 0) {
+      url.searchParams.set("exclude", Array.from(excluded).join(","));
+    } else {
+      url.searchParams.delete("exclude");
+    }
     url.hash = ""; // clean fragment
+    // Update the address bar without triggering a navigation/reload.
+    // This enables proper bookmarking of the shared comparison state.
+    window.history.replaceState({}, "", url.toString());
     try {
       await navigator.clipboard.writeText(url.toString());
       setShareCopied(true);
       toast.success(t("compare.shareCopied"));
       setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      // Fallback: select the URL in the address bar
-      toast.error(t("compare.shareCompare"));
+      // Clipboard API may be blocked (e.g. insecure context). The URL is
+      // already in the address bar, so the user can copy it manually.
+      setShareCopied(true);
+      toast.success(t("compare.shareCopied"));
+      setTimeout(() => setShareCopied(false), 2000);
     }
   };
 
@@ -233,6 +259,33 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
   const overallWinner = comp
     ? Object.entries(comp.relativeIA).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
     : null;
+
+  // Count how many metric rows each symbol "wins" (has the best rank within
+  // the selected set). Used for the winner callout banner.
+  const metricWins = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!comp) return counts;
+    for (const sym of comp.symbols) counts[sym] = 0;
+    for (const row of comp.rows) {
+      // Inline the winners logic: best rank within the row's cells.
+      const bestRank = row.cells.reduce((m, c) => Math.min(m, c.rank), Infinity);
+      for (const cell of row.cells) {
+        if (cell.rank === bestRank) {
+          counts[cell.symbol] = (counts[cell.symbol] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [comp]);
+
+  // The symbol that wins the most metric rows (may differ from overallWinner
+  // which is based on relativeIA).
+  const metricWinner = useMemo(() => {
+    const entries = Object.entries(metricWins);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][1] > 0 ? { symbol: entries[0][0], wins: entries[0][1], total: comp?.rows.length ?? 0 } : null;
+  }, [metricWins, comp]);
 
   return (
     <div className="space-y-6">
@@ -380,6 +433,50 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
         </Card>
       ) : (
         <div className="space-y-4">
+          {/* Winner callout — highlights which asset wins the most metric rows */}
+          {metricWinner && metricWinner.wins > 0 && (
+            <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4">
+              <div className="absolute -top-8 -end-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
+              <div className="relative flex items-center gap-3 flex-wrap">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 border border-primary/30">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                    {t("compare.metricWinner")}
+                  </div>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-lg font-bold text-gradient">{metricWinner.symbol}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {t("compare.winsCount", { wins: metricWinner.wins, total: metricWinner.total })}
+                    </span>
+                  </div>
+                </div>
+                {/* Mini bar chart of wins per symbol */}
+                <div className="flex items-end gap-1.5 h-8">
+                  {comp.symbols.map((sym) => {
+                    const wins = metricWins[sym] ?? 0;
+                    const maxWins = Math.max(...Object.values(metricWins), 1);
+                    const heightPct = (wins / maxWins) * 100;
+                    const isWinner = sym === metricWinner.symbol;
+                    return (
+                      <div key={sym} className="flex flex-col items-center gap-0.5" title={`${sym}: ${wins}`}>
+                        <div
+                          className={cn(
+                            "w-5 rounded-t-sm transition-all",
+                            isWinner ? "bg-primary" : "bg-muted-foreground/30",
+                          )}
+                          style={{ height: `${Math.max(8, heightPct)}%` }}
+                        />
+                        <span className="text-[8px] text-muted-foreground font-mono">{sym.slice(0, 3)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Summary header cards */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {comp.symbols.map((sym, idx) => {

@@ -209,15 +209,18 @@ export function DiscoveryView({
     <div className="space-y-5">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 grid-bg">
+        {/* Animated gradient glow background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-24 -end-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-pulse pointer-events-none" />
+        <div className="absolute -bottom-32 -start-32 h-72 w-72 rounded-full bg-chart-2/5 blur-3xl pointer-events-none" />
         <div className="relative p-5 sm:p-7">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary backdrop-blur-sm">
                 <Radar className="h-3.5 w-3.5" />
                 {t("app.subtitle")}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient">
                 {t("discovery.title")}
               </h1>
               <p className="text-sm text-muted-foreground max-w-2xl">
@@ -285,8 +288,8 @@ export function DiscoveryView({
           </div>
 
           {data?.note && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+              <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary/70" />
               <span>{data.note}</span>
             </div>
           )}
@@ -469,25 +472,29 @@ export function DiscoveryView({
                 {isLoading &&
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td colSpan={12} className="py-3 px-3">
+                      <td colSpan={12} className="py-3.5 px-3">
                         <Skeleton className="h-9 w-full" />
                       </td>
                     </tr>
                   ))}
                 {!isLoading &&
-                  filteredRows.map((r) => {
+                  filteredRows.map((r, idx) => {
                     const passed = r.result.gate.passed;
                     const trend = trendBySymbol[r.symbol] ?? [];
                     return (
                       <tr
                         key={r.symbol}
                         onClick={() => onSelect(r)}
-                        className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors group"
+                        className={cn(
+                          "border-b border-border/30 last:border-0 cursor-pointer transition-all group",
+                          idx % 2 === 1 ? "bg-foreground/[0.06]" : "",
+                          "hover:bg-primary/10 hover:shadow-md",
+                        )}
                       >
-                        <td className="py-3 px-2 text-muted-foreground font-mono text-xs hidden sm:table-cell">
+                        <td className="py-3.5 px-2 text-muted-foreground font-mono text-xs hidden sm:table-cell">
                           {r.rankMkt}
                         </td>
-                        <td className="py-3 px-3">
+                        <td className="py-3.5 px-3">
                           <div className="flex items-center gap-2.5">
                             {logoBySymbol[r.symbol] ? (
                               <img
@@ -519,20 +526,20 @@ export function DiscoveryView({
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3 hidden md:table-cell">
+                        <td className="py-3.5 px-3 hidden md:table-cell">
                           <Badge variant="outline" className="font-normal text-[11px]">
                             {r.category ?? "—"}
                           </Badge>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankFund}</td>
-                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankConf}</td>
-                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankEff}</td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3.5 px-3 text-center font-mono hidden sm:table-cell">{r.rankFund}</td>
+                        <td className="py-3.5 px-3 text-center font-mono hidden sm:table-cell">{r.rankConf}</td>
+                        <td className="py-3.5 px-3 text-center font-mono hidden sm:table-cell">{r.rankEff}</td>
+                        <td className="py-3.5 px-3 text-center">
                           <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/15 px-1.5 text-xs font-bold text-primary">
                             {r.rankMkt}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center hidden sm:table-cell">
+                        <td className="py-3.5 px-3 text-center hidden sm:table-cell">
                           <div className="flex flex-col items-center gap-1">
                             <span className="font-mono font-semibold text-sm tabular-nums">
                               {fmtScore(r.result.iaFinal)}
@@ -552,7 +559,7 @@ export function DiscoveryView({
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center hidden md:table-cell">
+                        <td className="py-3.5 px-3 text-center hidden md:table-cell">
                           <div className="flex flex-col items-center gap-0.5">
                             <Sparkline
                               values={trend.map((p) => p.iaFinal)}
@@ -566,14 +573,14 @@ export function DiscoveryView({
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3.5 px-2 text-center">
                           {passed ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 inline" />
                           ) : (
                             <XCircle className="h-4 w-4 text-red-500 inline" />
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3.5 px-3 text-center">
                           <span
                             className={cn(
                               "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
@@ -583,7 +590,7 @@ export function DiscoveryView({
                             {t(`decision.${r.result.decision}`)}
                           </span>
                         </td>
-                        <td className="py-3 px-1 text-center hidden sm:table-cell" aria-hidden>
+                        <td className="py-3.5 px-1 text-center hidden sm:table-cell" aria-hidden>
                           <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all inline" />
                         </td>
                       </tr>
@@ -646,14 +653,16 @@ function StatPill({
   tone?: "ok" | "bad";
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 p-3 transition-colors hover:border-border">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card/70 p-3 hover-lift hover:border-border">
+      {/* Subtle gradient accent on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity hover:opacity-100 pointer-events-none" />
+      <div className="relative flex items-center gap-2 text-muted-foreground">
         {icon}
         <span className="text-xs truncate">{label}</span>
       </div>
       <div
         className={cn(
-          "mt-1 text-xl font-bold tabular-nums",
+          "relative mt-1 text-xl font-bold tabular-nums",
           tone === "ok" && "text-emerald-500",
           tone === "bad" && "text-red-500",
         )}
