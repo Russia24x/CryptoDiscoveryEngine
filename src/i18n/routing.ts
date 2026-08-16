@@ -1,9 +1,12 @@
 import { defineRouting } from "next-intl/routing";
 
 export const routing = defineRouting({
-  locales: ["en", "fa"],
+  locales: ["fa", "en"],
   defaultLocale: "fa",
   localePrefix: "as-needed",
+  // Don't auto-detect from browser Accept-Language header.
+  // The default locale (fa) should always be served at "/" regardless of browser settings.
+  localeDetection: false,
 });
 
 export type Locale = (typeof routing.locales)[number];

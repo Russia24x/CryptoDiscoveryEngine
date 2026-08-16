@@ -132,6 +132,9 @@ export function DetailView({
         </div>
       ) : (
         <>
+          {/* Asset Overview — FIRST (image, price, social, description, external links) */}
+          <CoinInfoPanel symbol={row.symbol} />
+
           {/* Four-tier ranking */}
           <Card>
             <CardHeader className="pb-3">
@@ -395,9 +398,6 @@ export function DetailView({
 
           {/* Technical Analysis (TAF Framework) */}
           <TechnicalPanel symbol={row.symbol} />
-
-          {/* Asset Overview (CoinPaprika + external links) */}
-          <CoinInfoPanel symbol={row.symbol} />
         </>
       )}
     </div>

@@ -14,12 +14,24 @@ export function LanguageToggle() {
   const next = locale === "fa" ? "en" : "fa";
 
   const switchLocale = () => {
-    const segments = pathname.split("/");
-    segments[1] = next;
-    const newPath = segments.join("/") || "/";
-    startTransition(() => {
-      router.replace(newPath, { scroll: false });
-    });
+    // With localePrefix: "as-needed", fa (default) has NO prefix (path = /),
+    // en has prefix (path = /en). We need to handle both directions.
+    const segments = pathname.split("/").filter(Boolean);
+
+    if (segments.length === 0) {
+      // We're at "/" (fa, default locale). Switching to "en" → go to "/en".
+      startTransition(() => router.replace("/en", { scroll: false }));
+    } else if (segments[0] === "en") {
+      // We're at "/en/...". Switching to "fa" → strip "en" prefix.
+      segments.shift();
+      const newPath = "/" + segments.join("/");
+      startTransition(() => router.replace(newPath || "/", { scroll: false }));
+    } else {
+      // We're at "/fa/..." (shouldn't happen with as-needed, but handle it).
+      segments[0] = next;
+      const newPath = "/" + segments.join("/");
+      startTransition(() => router.replace(newPath, { scroll: false }));
+    }
   };
 
   return (

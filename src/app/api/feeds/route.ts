@@ -4,8 +4,23 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const DEFAULT_FEED_SOURCES = [
+  { kind: "rss", name: "ArzDigital — Breaking News", address: "https://arzdigital.com/breaking/feed/", enabled: true },
+  { kind: "rss", name: "ArzDigital — Blog", address: "https://arzdigital.com/blog/feed/", enabled: true },
+  { kind: "rss", name: "MihanBlockchain — Markets", address: "https://mihanblockchain.com/category/markets/feed/", enabled: true },
+  { kind: "rss", name: "MihanBlockchain — News", address: "https://mihanblockchain.com/category/news/feed/", enabled: true },
+];
+
+async function ensureSeedFeeds() {
+  const count = await db.feedSource.count();
+  if (count === 0) {
+    await db.feedSource.createMany({ data: DEFAULT_FEED_SOURCES });
+  }
+}
+
 export async function GET() {
   try {
+    await ensureSeedFeeds();
     const sources = await db.feedSource.findMany({ orderBy: { createdAt: "desc" } });
     return NextResponse.json({ sources });
   } catch {

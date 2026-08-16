@@ -115,7 +115,10 @@ export async function GET(
       supply,
       events: paprikaData?.events ?? [],
       category: cached?.category ?? null,
-      tvl: cached ? undefined : undefined, // TVL is in scan data, not here
+      openSource: paprikaData?.coin?.open_source ?? null,
+      parent: paprikaData?.coin?.parent ?? null,
+      whitepaper: paprikaData?.coin?.whitepaper?.link ?? null,
+      tvl: undefined, // available in scan data
     });
   } catch (e) {
     return NextResponse.json(

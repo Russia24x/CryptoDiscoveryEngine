@@ -51,6 +51,9 @@ interface CoinInfo {
   } | null;
   events: { id: string; date: string; name: string; description: string; link: string }[];
   category: string | null;
+  openSource: boolean | null;
+  parent: string | null;
+  whitepaper: string | null;
 }
 
 function SocialIcon({ label }: { label: string }) {
@@ -102,6 +105,45 @@ export function CoinInfoPanel({ symbol }: { symbol: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Header: logo + name + symbol + price */}
+        <div className="flex items-start gap-3">
+          {data.image ? (
+            <img
+              src={data.image}
+              alt={data.symbol}
+              className="h-12 w-12 rounded-xl border border-border/60 bg-muted shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-bold shrink-0">
+              {data.symbol.slice(0, 3)}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg font-bold tracking-tight">{data.symbol}</span>
+              <span className="text-sm text-muted-foreground">{data.name}</span>
+              {data.category && (
+                <Badge variant="outline" className="text-[10px]">{data.category}</Badge>
+              )}
+              {data.openSource !== null && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {data.openSource ? "Open Source" : "Closed Source"}
+                </Badge>
+              )}
+            </div>
+            {data.market && (
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xl font-bold tabular-nums">{fmtUsd(data.market.price)}</span>
+                <span className={cn("inline-flex items-center gap-0.5 text-sm font-semibold", data.market.change24h > 0 ? "text-emerald-500" : data.market.change24h < 0 ? "text-red-500" : "text-muted-foreground")}>
+                  {changeIcon(data.market.change24h)}
+                  {data.market.change24h > 0 ? "+" : ""}{fmtPct(data.market.change24h / 100)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Description */}
         {data.description && (
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
@@ -109,7 +151,7 @@ export function CoinInfoPanel({ symbol }: { symbol: string }) {
           </p>
         )}
 
-        {/* Market data */}
+        {/* Market data grid */}
         {data.market && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <Stat
