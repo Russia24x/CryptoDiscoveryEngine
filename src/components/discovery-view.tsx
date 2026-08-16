@@ -215,16 +215,16 @@ export function DiscoveryView({
               </caption>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-                  <th className="py-2.5 px-3 text-start font-medium">#</th>
+                  <th className="py-2.5 px-2 text-start font-medium hidden sm:table-cell">#</th>
                   <th className="py-2.5 px-3 text-start font-medium">{t("discovery.colSymbol")}</th>
                   <th className="py-2.5 px-3 text-start font-medium hidden md:table-cell">{t("discovery.colCategory")}</th>
-                  <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colFund")}</th>
-                  <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colConf")}</th>
-                  <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colEff")}</th>
+                  <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colFund")}</th>
+                  <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colConf")}</th>
+                  <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colEff")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colMkt")}</th>
-                  <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colIAFinal")}</th>
+                  <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colIAFinal")}</th>
                   <th className="py-2.5 px-3 text-center font-medium hidden lg:table-cell">{t("discovery.colTrend")}</th>
-                  <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colGate")}</th>
+                  <th className="py-2.5 px-2 text-center font-medium">{t("discovery.colGate")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colDecision")}</th>
                 </tr>
               </thead>
@@ -232,7 +232,7 @@ export function DiscoveryView({
                 {isLoading &&
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td colSpan={11} className="py-3 px-3">
+                      <td colSpan={5} className="py-3 px-3">
                         <Skeleton className="h-9 w-full" />
                       </td>
                     </tr>
@@ -246,7 +246,7 @@ export function DiscoveryView({
                         onClick={() => onSelect(r)}
                         className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
                       >
-                        <td className="py-3 px-3 text-muted-foreground font-mono text-xs">
+                        <td className="py-3 px-2 text-muted-foreground font-mono text-xs hidden sm:table-cell">
                           {r.rankMkt}
                         </td>
                         <td className="py-3 px-3">
@@ -267,15 +267,15 @@ export function DiscoveryView({
                             {r.category ?? "—"}
                           </Badge>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono">{r.rankFund}</td>
-                        <td className="py-3 px-3 text-center font-mono">{r.rankConf}</td>
-                        <td className="py-3 px-3 text-center font-mono">{r.rankEff}</td>
+                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankFund}</td>
+                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankConf}</td>
+                        <td className="py-3 px-3 text-center font-mono hidden sm:table-cell">{r.rankEff}</td>
                         <td className="py-3 px-3 text-center">
                           <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/15 px-1.5 text-xs font-bold text-primary">
                             {r.rankMkt}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center hidden sm:table-cell">
                           <div className="flex flex-col items-center gap-1">
                             <span className="font-mono font-semibold text-sm tabular-nums">
                               {fmtScore(r.result.iaFinal)}
@@ -302,7 +302,7 @@ export function DiscoveryView({
                             height={16}
                           />
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-2 text-center">
                           {passed ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 inline" />
                           ) : (
@@ -324,7 +324,7 @@ export function DiscoveryView({
                   })}
                 {!isLoading && isError && (
                   <tr>
-                    <td colSpan={11} className="py-10 text-center">
+                    <td colSpan={5} className="py-10 text-center">
                       <div className="flex flex-col items-center gap-2 text-sm">
                         <AlertTriangle className="h-5 w-5 text-red-500" />
                         <span className="text-red-600 dark:text-red-400 font-medium">
@@ -340,7 +340,7 @@ export function DiscoveryView({
                 )}
                 {!isLoading && !isError && rows.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="py-10 text-center text-muted-foreground text-sm">
+                    <td colSpan={5} className="py-10 text-center text-muted-foreground text-sm">
                       {t("discovery.noResults")}
                     </td>
                   </tr>

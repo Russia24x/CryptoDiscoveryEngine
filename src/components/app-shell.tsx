@@ -21,7 +21,7 @@ export function AppShell() {
   const [selected, setSelected] = useState<RankedRow | null>(null);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       <AppHeader view={view} setView={setView} />
       <main className="flex-1 w-full">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
