@@ -5,13 +5,15 @@
  */
 import { defillamaProvider } from "./defillama";
 import { coingeckoProvider } from "./coingecko";
+import { binanceProvider } from "./binance";
 import { registerProvider, listProviders as baseListProviders, type DataProvider } from "./types";
 
 let registered = false;
 function ensureRegistered() {
   if (registered) return;
-  registerProvider(defillamaProvider);
-  registerProvider(coingeckoProvider);
+  registerProvider(binanceProvider);    // priority 5 — real-time
+  registerProvider(defillamaProvider);   // priority 10 — TVL/fees/revenue
+  registerProvider(coingeckoProvider);   // priority 20 — market data
   registered = true;
 }
 

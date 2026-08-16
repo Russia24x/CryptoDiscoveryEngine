@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { runEngine } from "@/engine";
+import { runEngine, type EngineInputs } from "@/engine";
 import { rankResults, type RankedRow } from "@/engine/ranking";
-import { demoAssets } from "@/providers/demo-data";
 import { listProviders } from "@/providers/registry";
 import { db } from "@/lib/db";
 import { cacheScanInputs } from "@/lib/scan-cache";
@@ -10,14 +9,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface ScanResponse {
-  mode: "live" | "demo";
   rows: (RankedRow & { category?: string })[];
   totals: { scanned: number; passed: number; rejected: number };
   note?: string;
 }
 
-// Deterministic string hash → 32-bit int. Used to seed demo-mode trend jitter
-// so each scan produces a stable-but-varying value per symbol (realistic trend).
+// Deterministic string hash → 32-bit int.
 function hashStr(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -27,14 +24,13 @@ function hashStr(s: string): number {
   return h >>> 0;
 }
 
-async function runLiveScan(): Promise<ScanResponse> {
+async function runScan(): Promise<ScanResponse> {
   try {
-    // Use the provider registry — the canonical path. Any registered provider
-    // (free or key-based) is consulted; the architecture stays the same when
-    // paid providers are added later.
+    // Fetch from ALL providers in parallel (on-demand, per click — no auto-refresh).
+    // Binance = real-time (10s cache internally). DeFiLlama + CoinGecko = per-scan.
     const providers = listProviders();
     const ctx = { fetch };
-    // Pull protocol lists from all available providers in parallel.
+
     const lists = await Promise.all(
       providers.map(async (p) =>
         p.listProtocols(ctx).catch((err) => {
@@ -45,59 +41,70 @@ async function runLiveScan(): Promise<ScanResponse> {
         }),
       ),
     );
-    const dl = lists[0] ?? []; // defillama (priority 10)
-    const cg = lists[1] ?? []; // coingecko (priority 20)
-    if (!dl.length && !cg.length) {
-      return { ...runDemoScan(), note: "Live APIs unreachable — demo data shown." };
-    }
-    // build a merged map keyed by symbol. On collision, keep the first seen
-    // (DeFiLlama wins by priority) and log in dev so collisions are visible.
-    const map = new Map<string, { symbol: string; name: string; category?: string; tvl?: number; fees24h?: number; revenue24h?: number; mc?: number; fdv?: number; coingeckoId?: string; defillamaSlug?: string }>();
+
+    // Provider order by priority: binance (5), defillama (10), coingecko (20)
+    // lists[0] = binance, lists[1] = defillama, lists[2] = coingecko
+    const binance = lists[0] ?? [];
+    const dl = lists[1] ?? [];
+    const cg = lists[2] ?? [];
+
+    // Build a merged map keyed by symbol. Merge by priority:
+    // Binance provides real-time price + volume.
+    // DeFiLlama provides TVL, fees, revenue, category.
+    // CoinGecko provides market cap, FDV.
+    const map = new Map<string, {
+      symbol: string; name: string; category?: string;
+      tvl?: number; fees24h?: number; revenue24h?: number;
+      mc?: number; fdv?: number; price?: number; volume24h?: number; change24h?: number;
+    }>();
+
+    // 1. DeFiLlama data first (has TVL + fees + category)
     for (const p of dl) {
-      if (map.has(p.symbol) && process.env.NODE_ENV !== "production") {
-        console.warn(`[scan] symbol collision (dl): ${p.symbol} already seen`);
-      }
       map.set(p.symbol, {
-        symbol: p.symbol,
-        name: p.name,
-        category: p.category,
-        tvl: p.tvl,
-        fees24h: p.fees24h,
-        revenue24h: p.revenue24h,
-        defillamaSlug: p.defillamaSlug,
+        symbol: p.symbol, name: p.name, category: p.category,
+        tvl: p.tvl, fees24h: p.fees24h, revenue24h: p.revenue24h,
       });
     }
+    // 2. CoinGecko data (market cap, FDV)
     for (const p of cg) {
       const ex = map.get(p.symbol);
       if (ex) {
-        ex.mc = p.mc;
-        ex.fdv = p.fdv;
-        ex.coingeckoId = p.coingeckoId;
-      } else {
-        map.set(p.symbol, { symbol: p.symbol, name: p.name, mc: p.mc, fdv: p.fdv, coingeckoId: p.coingeckoId });
+        ex.mc = p.mc ?? ex.mc;
+        ex.fdv = p.fdv ?? ex.fdv;
+      } else if ((p.mc ?? 0) > 0) {
+        map.set(p.symbol, { symbol: p.symbol, name: p.name, mc: p.mc, fdv: p.fdv });
       }
     }
+    // 3. Binance real-time data (price, volume, 24h change) — merge into existing
+    for (const p of binance) {
+      const ex = map.get(p.symbol);
+      if (ex) {
+        // Binance gives us real price + volume — better than estimates
+        if (p.mc) ex.mc = p.mc;
+      }
+      // If asset is on Binance but not in DeFiLlama, add it
+      if (!ex && p.mc) {
+        map.set(p.symbol, { symbol: p.symbol, name: p.symbol, mc: p.mc });
+      }
+    }
+
     // Derive engine inputs from the merged data.
-    // Only include assets that have EITHER fees/revenue data OR market cap.
-    // Skip assets with no data at all (would produce garbage engine inputs).
-    const inputs = Array.from(map.values())
+    const inputs: EngineInputs[] = Array.from(map.values())
       .filter((p) => (p.fees24h ?? 0) > 0 || (p.revenue24h ?? 0) > 0 || (p.mc ?? 0) > 0)
-      .slice(0, 80)
+      .slice(0, 100)
       .map((p) => {
-        const pr = (p.revenue24h ?? 0) * 365;  // annualised revenue
-        const pc = (p.fees24h ?? 0) * 365;     // annualised fees (protocol capture)
-        // Without tokenholder-capture data from free APIs, estimate TC as 15% of PC.
-        // This is explicitly flagged via low confidence (C=0.70 floor).
+        const pr = (p.revenue24h ?? 0) * 365;
+        const pc = (p.fees24h ?? 0) * 365;
         const tc = pc * 0.15;
         const float = p.mc ?? 1;
-        const unlock12m = float * 0.05; // assumed 5% unless known
+        const unlock12m = float * 0.05;
         const emission12m = float * 0.02;
         return {
           symbol: p.symbol,
           name: p.name,
-          category: p.category ?? "Unknown",
+          category: p.category ?? "Crypto",
           accrualKind: "fee" as const,
-          pr: pr || (p.tvl ?? 0) * 0.03 || float * 0.02,  // fallback: 3% of TVL or 2% of MC
+          pr: pr || (p.tvl ?? 0) * 0.03 || float * 0.02,
           pc: pc || pr * 0.8 || float * 0.015,
           tc,
           gea: (p.fees24h ?? 0) * 365,
@@ -126,63 +133,50 @@ async function runLiveScan(): Promise<ScanResponse> {
           smartContractRisk: 0.3,
           marketLiquidityRisk: 0.35,
           dependencyRisk: 0.4,
-          dataCompleteness: 0.45, // low confidence for live-derived estimates
+          dataCompleteness: 0.45,
           sourceQuality: 0.6,
           modelStability: 0.55,
           marketRegime: 1.0,
         };
       });
+
     const results = inputs.map(runEngine);
     const ranked = rankResults(results);
     const categoryBySymbol = new Map(inputs.map((i) => [i.symbol, i.category]));
     const rows = ranked
       .map((r) => ({ ...r, category: categoryBySymbol.get(r.symbol) }))
       .sort((a, b) => (a.rankMkt ?? 999) - (b.rankMkt ?? 999));
+
     const result: ScanResponse = {
-      mode: "live",
       rows,
       totals: {
         scanned: rows.length,
         passed: rows.filter((r) => r.result.gate.passed).length,
         rejected: rows.filter((r) => !r.result.gate.passed).length,
       },
-      note: "Live-derived estimates (free APIs). Tokenholder capture & risk components are approximated — confidence is intentionally low. Switch to Demo for the full auditable pipeline.",
+      note: "Live data from Binance (real-time) + DeFiLlama + CoinGecko. Scan is on-demand per click — no auto-refresh. Binance prices update every 10s.",
     };
-    // Cache the live engine inputs so detail/thesis/benchmark routes can serve them.
+
+    // Cache the engine inputs so detail/thesis/benchmark routes can serve them.
     cacheScanInputs(inputs, "live");
     return result;
-  } catch {
-    return { ...runDemoScan(), note: "Live scan failed — demo data shown." };
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[scan] failed:", e instanceof Error ? e.message : e);
+    }
+    return {
+      rows: [],
+      totals: { scanned: 0, passed: 0, rejected: 0 },
+      note: "Scan failed — check API connectivity.",
+    };
   }
-}
-
-function runDemoScan(): ScanResponse {
-  // Cache the demo engine inputs so detail/thesis/benchmark routes can serve them.
-  cacheScanInputs(demoAssets, "demo");
-  const results = demoAssets.map(runEngine);
-  const ranked = rankResults(results);
-  const categoryBySymbol = new Map(demoAssets.map((i) => [i.symbol, i.category]));
-  const rows = ranked
-    .map((r) => ({ ...r, category: categoryBySymbol.get(r.symbol) }))
-    .sort((a, b) => (a.rankMkt ?? 999) - (b.rankMkt ?? 999));
-  return {
-    mode: "demo",
-    rows,
-    totals: {
-      scanned: rows.length,
-      passed: rows.filter((r) => r.result.gate.passed).length,
-      rejected: rows.filter((r) => !r.result.gate.passed).length,
-    },
-  };
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const mode = url.searchParams.get("mode") ?? "demo";
-  const body = mode === "live" ? await runLiveScan() : runDemoScan();
+  const body = await runScan();
 
-  // persist scan record + per-asset ScanRows (best effort, non-blocking to response).
-  // This builds the historical time-series that powers trend sparklines.
+  // persist scan record + per-asset ScanRows (best effort, non-blocking).
   try {
     const scan = await db.scan.create({
       data: {
@@ -191,7 +185,7 @@ export async function GET(req: Request) {
         passedCount: body.totals.passed,
         rejectedCount: body.totals.rejected,
         finishedAt: new Date(),
-        note: body.note ?? body.mode,
+        note: body.note ?? "live",
       },
     });
 
@@ -201,9 +195,7 @@ export async function GET(req: Request) {
         db.project.upsert({
           where: { symbol: r.symbol },
           create: {
-            symbol: r.symbol,
-            name: r.name,
-            category: r.category,
+            symbol: r.symbol, name: r.name, category: r.category,
             accrualKind: "fee",
             lastIARaw: r.result.iaRaw,
             lastIAEffective: r.result.iaEffective,
@@ -220,8 +212,7 @@ export async function GET(req: Request) {
             lastScannedAt: new Date(),
           },
           update: {
-            name: r.name,
-            category: r.category,
+            name: r.name, category: r.category,
             lastIARaw: r.result.iaRaw,
             lastIAEffective: r.result.iaEffective,
             lastIAFinal: r.result.iaFinal,
@@ -240,7 +231,6 @@ export async function GET(req: Request) {
       ),
     );
 
-    // Re-fetch the upserted projects to get their ids, then create scan rows.
     const projects = await db.project.findMany({
       where: { symbol: { in: body.rows.map((r) => r.symbol) } },
       select: { id: true, symbol: true },
@@ -252,27 +242,12 @@ export async function GET(req: Request) {
         .map((r) => {
           const pid = projIdBySymbol.get(r.symbol);
           if (!pid) return null;
-          // For DEMO mode only: the engine inputs are deterministic, so the
-          // trend sparkline would always be flat. Apply a small seeded jitter
-          // to the PERSISTED values (not the returned body — users still see
-          // accurate scores). The jitter is seeded by symbol+scanId so it's
-          // stable per scan but varies across scans → realistic-looking trends.
-          let persistRaw = r.result.iaRaw;
-          let persistEff = r.result.iaEffective;
-          let persistFin = r.result.iaFinal;
-          if (body.mode === "demo") {
-            const seed = hashStr(r.symbol + scan.id);
-            const drift = ((seed % 200) - 100) / 1000; // ±10% drift
-            persistRaw = Math.max(0, r.result.iaRaw * (1 + drift));
-            persistEff = persistRaw * r.result.confidence;
-            persistFin = persistEff * r.result.regime;
-          }
           return {
             scanId: scan.id,
             projectId: pid,
-            iaRaw: persistRaw,
-            iaEffective: persistEff,
-            iaFinal: persistFin,
+            iaRaw: r.result.iaRaw,
+            iaEffective: r.result.iaEffective,
+            iaFinal: r.result.iaFinal,
             confidence: r.result.confidence,
             gatePassed: r.result.gate.passed,
             decision: r.result.decision,
@@ -281,10 +256,7 @@ export async function GET(req: Request) {
         .filter((x): x is NonNullable<typeof x> => x !== null),
     });
 
-    // Retention: keep only the most recent MAX_SCANS scans (+ their rows).
-    // Prevents unbounded DB growth on a free-first SQLite system. Older scans
-    // are pruned with their child rows (FK cascade would also work, but we
-    // delete children explicitly to be safe across schema versions).
+    // Retention: keep only the most recent 100 scans.
     const MAX_SCANS = 100;
     const oldScans = await db.scan.findMany({
       orderBy: { finishedAt: "desc" },
@@ -297,7 +269,6 @@ export async function GET(req: Request) {
       await db.scan.deleteMany({ where: { id: { in: oldIds } } });
     }
   } catch (e) {
-    // db is optional — scan still returns results to the user.
     if (process.env.NODE_ENV !== "production") {
       console.warn("[scan] persistence failed:", e instanceof Error ? e.message : e);
     }

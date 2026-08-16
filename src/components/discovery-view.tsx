@@ -42,7 +42,6 @@ interface TrendPoint {
 }
 
 type ScanResp = {
-  mode: "live" | "demo";
   rows: (RankedRow & { category?: string })[];
   totals: { scanned: number; passed: number; rejected: number };
   note?: string;
@@ -56,13 +55,12 @@ export function DiscoveryView({
   onSelect: (row: RankedRow) => void;
 }) {
   const t = useTranslations();
-  const [mode, setMode] = useState<"demo" | "live">("demo");
   const [sortKey, setSortKey] = useState<SortKey>("rankMkt");
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery<ScanResp>({
-    queryKey: ["scan", mode],
+    queryKey: ["scan"],
     queryFn: async () => {
-      const res = await fetch(`/api/scan?mode=${mode}`);
+      const res = await fetch(`/api/scan`);
       if (!res.ok) throw new Error("scan failed");
       return res.json();
     },
@@ -133,30 +131,6 @@ export function DiscoveryView({
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  {t("discovery.scanMode")}
-                </label>
-                <Select value={mode} onValueChange={(v) => setMode(v as "demo" | "live")}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="demo">
-                      <span className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        {t("discovery.demoData")}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="live">
-                      <span className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        {t("discovery.liveData")}
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <Button
                 onClick={() => refetch()}
                 disabled={isFetching}
@@ -189,15 +163,10 @@ export function DiscoveryView({
             />
             <StatPill
               icon={
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    data?.mode === "live" ? "bg-emerald-500" : "bg-amber-500",
-                  )}
-                />
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               }
-              label={data?.mode === "live" ? t("common.live") : t("common.demo")}
-              value={data?.mode?.toUpperCase() ?? "—"}
+              label={t("common.live")}
+              value="LIVE"
             />
           </div>
 

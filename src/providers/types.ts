@@ -58,6 +58,8 @@ export interface DataProvider {
   isAvailable(ctx: ProviderContext): boolean;
   listProtocols(ctx: ProviderContext): Promise<ProtocolSummary[]>;
   getProtocol(symbol: string, ctx: ProviderContext): Promise<ProtocolDetail | null>;
+  /** Optional: real-time price (only Binance implements this). */
+  getPrice?(symbol: string, ctx: ProviderContext): Promise<{ price: number; change24h: number; volume24h: number } | null>;
 }
 
 // ─── Registry ─────────────────────────────────────────────────────

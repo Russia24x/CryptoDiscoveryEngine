@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { runEngine } from "@/engine";
-import { demoAssets } from "@/providers/demo-data";
 import { getCachedInput } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
@@ -8,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Evidence graph derived deterministically from the engine inputs so the
 // detail view always has structured, explainable evidence per ARCHITECTURE.md.
-function buildEvidence(input: typeof demoAssets[number], result: ReturnType<typeof runEngine>) {
+function buildEvidence(input: Parameters<typeof runEngine>[0], result: ReturnType<typeof runEngine>) {
   const c = result.components;
   const now = new Date();
   const items = [
@@ -98,10 +97,7 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
-  // Look up from cache first (populated by /api/scan), then fall back to demo.
-  const input = getCachedInput(symbol) ?? demoAssets.find(
-    (a) => a.symbol.toUpperCase() === symbol.toUpperCase(),
-  ) ?? null;
+  const input = getCachedInput(symbol);
   if (!input) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }

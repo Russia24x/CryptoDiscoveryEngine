@@ -23,8 +23,8 @@ import {
   AlertTriangle,
   RotateCw,
 } from "lucide-react";
-import { demoAssets } from "@/providers/demo-data";
-import { getAllCachedInputs, getCachedInput } from "@/lib/scan-cache";
+import { getAllCachedInputs } from "@/lib/scan-cache";
+import type { EngineInputs } from "@/engine";
 import { cn, fmtScore, fmtUsd } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -152,10 +152,9 @@ export function ComparisonView() {
               {t("compare.selectAssets")}
             </div>
             <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scroll-thin pe-1">
-              {((): typeof demoAssets => {
-                // Use cached scan inputs (live assets) if available, else demo.
+              {((): EngineInputs[] => {
                 const cached = getAllCachedInputs();
-                return cached.length > 0 ? cached : demoAssets;
+                return cached.length > 0 ? cached : [];
               })().map((a, idx) => {
                 const isSel = selected.includes(a.symbol);
                 const palette = PALETTE[selected.indexOf(a.symbol) % PALETTE.length];
@@ -283,7 +282,7 @@ export function ComparisonView() {
               <CardDescription>
                 {t("benchmark.peerCount", { count: (() => {
                 const cached = getAllCachedInputs();
-                return cached.length > 0 ? cached.length : demoAssets.length;
+                return cached.length > 0 ? cached.length : 0;
               })() })}
               </CardDescription>
             </CardHeader>

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { compareAssets } from "@/engine/percentile";
-import { demoAssets } from "@/providers/demo-data";
 import { getCachedInput, getAllCachedInputs } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
@@ -13,8 +12,7 @@ export async function POST(req: Request) {
   if (raw.length < 2) {
     return NextResponse.json({ error: "need at least 2 symbols" }, { status: 400 });
   }
-  // Dedupe case-insensitively (HYPE == hype) — prevents duplicate columns
-  // in the comparison matrix if the caller sends the same symbol twice.
+  // Dedupe case-insensitively.
   const seen = new Set<string>();
   const symbols: string[] = [];
   for (const s of raw) {
@@ -33,16 +31,15 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  // Look up from cache first (supports live assets), then demo.
+  // Look up from scan cache.
   const targets = symbols
-    .map((s) => getCachedInput(s) ?? demoAssets.find((a) => a.symbol.toUpperCase() === s.toUpperCase()))
+    .map((s) => getCachedInput(s))
     .filter((x): x is NonNullable<typeof x> => Boolean(x));
   if (targets.length < 2) {
-    return NextResponse.json({ error: "not enough known symbols" }, { status: 404 });
+    return NextResponse.json({ error: "not enough cached symbols — run a scan first" }, { status: 404 });
   }
-  // Use cached peers (live scan set) if available, otherwise demo.
   const peers = getAllCachedInputs();
-  const peerSet = peers.length > 0 ? peers : demoAssets;
+  const peerSet = peers.length > 0 ? peers : targets;
   const comparison = compareAssets(targets, peerSet);
   return NextResponse.json({ comparison });
 }
