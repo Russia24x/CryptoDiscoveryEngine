@@ -33,6 +33,7 @@ import { DecisionBadge } from "./decision-badge";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { ThesisPanel } from "./thesis-panel";
 import { TechnicalPanel } from "./technical-panel";
+import { CoinInfoPanel } from "./coin-info-panel";
 
 interface DetailResp {
   input: EngineInputs;
@@ -394,6 +395,9 @@ export function DetailView({
 
           {/* Technical Analysis (TAF Framework) */}
           <TechnicalPanel symbol={row.symbol} />
+
+          {/* Asset Overview (CoinPaprika + external links) */}
+          <CoinInfoPanel symbol={row.symbol} />
         </>
       )}
     </div>

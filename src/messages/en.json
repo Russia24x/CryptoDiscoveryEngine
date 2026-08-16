@@ -300,5 +300,20 @@
     "notOnBinance": "{symbol} is not listed on Binance. Technical analysis requires OHLCV data from Binance.",
     "insufficientData": "Not enough historical data for analysis (need at least 50 candles).",
     "fetchFailed": "Failed to fetch data from Binance."
+  },
+  "coinInfo": {
+    "title": "Asset Overview",
+    "price": "Price",
+    "marketCap": "Market Cap",
+    "volume24h": "Volume (24h)",
+    "change24h": "Change (24h)",
+    "change7d": "Change (7d)",
+    "change30d": "Change (30d)",
+    "rank": "Rank",
+    "totalSupply": "Total Supply",
+    "maxSupply": "Max Supply",
+    "beta": "Beta",
+    "events": "Upcoming Events",
+    "viewEvent": "View Event"
   }
 }
