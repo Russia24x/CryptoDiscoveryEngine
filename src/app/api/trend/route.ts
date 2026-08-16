@@ -16,6 +16,10 @@ interface TrendPoint {
   decision: string | null;
 }
 
+// Max symbols per batch request. The scan endpoint returns up to 100 rows,
+// so the trend batch must accept the full set (was 50, which caused a 400
+// whenever a scan returned > 50 assets — see discovery-view.tsx trendSymbols).
+const MAX_SYMBOLS = 100;
 const LIMIT = 20;
 
 export async function POST(req: Request) {
@@ -24,8 +28,8 @@ export async function POST(req: Request) {
   if (!symbols.length) {
     return NextResponse.json({ trends: {} });
   }
-  if (symbols.length > 50) {
-    return NextResponse.json({ error: "max 50 symbols" }, { status: 400 });
+  if (symbols.length > MAX_SYMBOLS) {
+    return NextResponse.json({ error: `max ${MAX_SYMBOLS} symbols` }, { status: 400 });
   }
 
   try {
@@ -43,8 +47,8 @@ export async function POST(req: Request) {
           where: { projectId: { in: projectIds } },
           orderBy: { id: "desc" },
           // take more than LIMIT per project, then group+slice in JS. The
-          // max we'd fetch is 50 projects × 20 = 1000 rows, acceptable.
-          take: 50 * LIMIT,
+          // max we'd fetch is MAX_SYMBOLS projects × 20 = 2000 rows, acceptable.
+          take: MAX_SYMBOLS * LIMIT,
           select: {
             projectId: true,
             iaFinal: true,
