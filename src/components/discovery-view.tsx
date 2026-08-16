@@ -578,8 +578,8 @@ export function DiscoveryView({
                   <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colEff")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colMkt")}</th>
                   <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colIAFinal")}</th>
-                  {/* 7d price sparkline — only visible on lg+ to save space */}
-                  <th className="py-2.5 px-3 text-center font-medium hidden lg:table-cell">{t("discovery.colPrice7d")}</th>
+                  {/* 7d price sparkline — visible on md+ (tablets and up) */}
+                  <th className="py-2.5 px-3 text-center font-medium hidden md:table-cell">{t("discovery.colPrice7d")}</th>
                   {/* Trend now visible on md+ (was lg only — effectively hidden on tablets) */}
                   <th className="py-2.5 px-3 text-center font-medium hidden md:table-cell">{t("discovery.colTrend")}</th>
                   <th className="py-2.5 px-2 text-center font-medium">{t("discovery.colGate")}</th>
@@ -698,7 +698,7 @@ export function DiscoveryView({
                           </div>
                         </td>
                         {/* 7d price sparkline + change% */}
-                        <td className="py-3.5 px-3 text-center hidden lg:table-cell">
+                        <td className="py-3.5 px-3 text-center hidden md:table-cell">
                           <div className="flex flex-col items-center gap-0.5">
                             {(() => {
                               const p = priceBySymbol[r.symbol];

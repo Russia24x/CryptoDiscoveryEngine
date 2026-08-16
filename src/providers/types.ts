@@ -102,6 +102,12 @@ export async function safeJsonFetch<T = unknown>(
       if (process.env.NODE_ENV !== "production") {
         console.warn(`[provider] ${res.status} ${res.statusText} ← ${url}`);
       }
+      // Store the rate-limit status on the function for circuit-breaker detection.
+      // This is a side-channel — callers that care about rate-limiting can check
+      // lastRateLimitStatus after calling safeJsonFetch.
+      if (res.status === 429 || res.status === 402) {
+        safeJsonFetch.lastRateLimitStatus = res.status;
+      }
       return null;
     }
     return (await res.json()) as T;
@@ -115,3 +121,7 @@ export async function safeJsonFetch<T = unknown>(
     clearTimeout(t);
   }
 }
+
+// Side-channel: stores the last rate-limit status (429 or 402) encountered.
+// Reset to null on each call. Used by provider circuit breakers.
+safeJsonFetch.lastRateLimitStatus = null as number | null;

@@ -12,6 +12,9 @@ import {
   type ProtocolDetail,
   safeJsonFetch,
 } from "./types";
+import { isTripped, trip } from "@/lib/circuit-breaker";
+
+const GECKO_CIRCUIT = "coingecko";
 
 interface CGMarket {
   id: string;
@@ -104,12 +107,25 @@ export async function getCoingeckoHistorical(
 ): Promise<number[]> {
   const sym = symbol.toUpperCase();
 
+  // Circuit breaker: skip CoinGecko entirely if recently rate-limited.
+  if (isTripped(GECKO_CIRCUIT)) return [];
+
   // Check ID cache first
   let coinId = geckoIdCache.get(sym);
   if (coinId === undefined) {
     // Not cached — search for the coin ID
+    // Reset the rate-limit side-channel before the fetch.
+    safeJsonFetch.lastRateLimitStatus = null;
+
     const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(sym)}`;
     const search = await safeJsonFetch<{ coins: Array<{ id: string; symbol: string; market_cap_rank: number }> }>(searchUrl, ctx);
+
+    // If the search hit a rate limit, trip the circuit for 5 minutes.
+    if (safeJsonFetch.lastRateLimitStatus !== null) {
+      trip(GECKO_CIRCUIT, 5 * 60 * 1000);
+      return [];
+    }
+
     if (!search?.coins?.length) {
       geckoIdCache.set(sym, null);
       return [];
@@ -133,9 +149,19 @@ export async function getCoingeckoHistorical(
   // coinId is null if previously searched and not found
   if (!coinId) return [];
 
+  // Reset the rate-limit side-channel before the chart fetch.
+  safeJsonFetch.lastRateLimitStatus = null;
+
   // Fetch historical prices. interval=daily for >1 day.
   const chartUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
   const chart = await safeJsonFetch<{ prices: [number, number][] }>(chartUrl, ctx);
+
+  // If the chart fetch hit a rate limit, trip the circuit for 5 minutes.
+  if (safeJsonFetch.lastRateLimitStatus !== null) {
+    trip(GECKO_CIRCUIT, 5 * 60 * 1000);
+    return [];
+  }
+
   if (!chart?.prices?.length) return [];
 
   // Extract just the price values (drop timestamps).

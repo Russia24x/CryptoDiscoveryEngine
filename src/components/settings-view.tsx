@@ -23,8 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, KeyRound, Server, Rss, Send, Twitter, Trash2 } from "lucide-react";
+import { Plus, KeyRound, Server, Rss, Send, Twitter, Trash2, Star, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/format";
+import { useLocalStorage } from "@/lib/use-local-storage";
 import { toast } from "sonner";
 
 interface ProviderRow {
@@ -234,7 +235,117 @@ export function SettingsView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Watchlist management */}
+      <WatchlistCard />
     </div>
+  );
+}
+
+function WatchlistCard() {
+  const t = useTranslations();
+  const [watchlist, setWatchlist] = useLocalStorage<string[]>("watchlist", []);
+  const [compareSet, setCompareSet] = useLocalStorage<string[]>("compare-set", []);
+  const [excludedLs, setExcludedLs] = useLocalStorage<string[]>("compare-excluded", []);
+  const [confirmClear, setConfirmClear] = useState<"watchlist" | "compare" | null>(null);
+
+  const clearWatchlist = () => {
+    setWatchlist([]);
+    setConfirmClear(null);
+    toast.success(t("settings.watchlistCleared"));
+  };
+
+  const clearCompareSet = () => {
+    setCompareSet([]);
+    setExcludedLs([]);
+    setConfirmClear(null);
+    toast.success(t("settings.compareSetCleared"));
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Star className="h-4 w-4 text-primary" />
+          {t("settings.dataManagement")}
+        </CardTitle>
+        <CardDescription>{t("settings.dataManagementHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Watchlist */}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 p-3">
+          <div className="flex items-center gap-2.5">
+            <Star className="h-4 w-4 text-amber-500" />
+            <div>
+              <div className="text-sm font-medium">{t("settings.watchlist")}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {t("settings.watchlistCount", { count: watchlist.length })}
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8 text-xs"
+            disabled={watchlist.length === 0}
+            onClick={() => confirmClear === "watchlist" ? clearWatchlist() : setConfirmClear("watchlist")}
+          >
+            {confirmClear === "watchlist" ? (
+              <>
+                <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                {t("settings.confirmClear")}
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-3.5 w-3.5" />
+                {t("settings.clear")}
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Compare set */}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 p-3">
+          <div className="flex items-center gap-2.5">
+            <Star className="h-4 w-4 text-primary" />
+            <div>
+              <div className="text-sm font-medium">{t("settings.compareSet")}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {t("settings.compareSetCount", { count: compareSet.length })}
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8 text-xs"
+            disabled={compareSet.length === 0 && excludedLs.length === 0}
+            onClick={() => confirmClear === "compare" ? clearCompareSet() : setConfirmClear("compare")}
+          >
+            {confirmClear === "compare" ? (
+              <>
+                <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                {t("settings.confirmClear")}
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-3.5 w-3.5" />
+                {t("settings.clear")}
+              </>
+            )}
+          </Button>
+        </div>
+
+        {confirmClear && (
+          <button
+            onClick={() => setConfirmClear(null)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            {t("common.cancel")}
+          </button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

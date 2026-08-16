@@ -15,6 +15,9 @@
  * - /tickers/{id}/historical — OHLCV (free tier: recent only)
  */
 import { safeJsonFetch } from "./types";
+import { isTripped, trip, isRateLimitStatus } from "@/lib/circuit-breaker";
+
+const PAPRIKA_CIRCUIT = "coinpaprika";
 
 export interface CoinPaprikaCoin {
   id: string;            // e.g. "btc-bitcoin"
@@ -86,10 +89,24 @@ export async function findCoinId(
   const sym = symbol.toUpperCase();
   if (idCache.has(sym)) return idCache.get(sym)!;
 
+  // Circuit breaker: skip CoinPaprika entirely if recently rate-limited.
+  // This prevents 10+ wasted API calls per batch request when rate-limited.
+  if (isTripped(PAPRIKA_CIRCUIT)) return null;
+
+  // Reset the rate-limit side-channel before the fetch.
+  safeJsonFetch.lastRateLimitStatus = null;
+
   const data = await safeJsonFetch<{ currencies: Array<{ id: string; symbol: string; name: string }> }>(
     `${PAPRIKA_BASE}/search?q=${encodeURIComponent(sym)}&limit=5`,
     ctx,
   );
+
+  // If the fetch hit a rate limit, trip the circuit for 5 minutes.
+  if (safeJsonFetch.lastRateLimitStatus !== null) {
+    trip(PAPRIKA_CIRCUIT, 5 * 60 * 1000);
+    return null;
+  }
+
   if (!data?.currencies) return null;
 
   // Find exact symbol match (case-insensitive)

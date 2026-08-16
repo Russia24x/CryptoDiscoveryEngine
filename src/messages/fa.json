@@ -188,7 +188,17 @@
     "updateFailed": "به‌روزرسانی ناموفق بود",
     "saveFailed": "ذخیره ناموفق بود",
     "addFailed": "افزودن ناموفق بود",
-    "removeFailed": "حذف ناموفق بود"
+    "removeFailed": "حذف ناموفق بود",
+    "dataManagement": "مدیریت داده‌ها",
+    "dataManagementHint": "لیست نظارت و مجموعهٔ مقایسه را پاک کن.",
+    "watchlist": "فهرست نظارت",
+    "watchlistCount": "{count} دارایی نشانه‌گذاری‌شده",
+    "compareSet": "مجموعهٔ مقایسه",
+    "compareSetCount": "{count} دارایی در صف مقایسه",
+    "clear": "پاک کردن",
+    "confirmClear": "تأیید پاک‌سازی؟",
+    "watchlistCleared": "فهرست نظارت پاک شد",
+    "compareSetCleared": "مجموعهٔ مقایسه پاک شد"
   },
   "footer": {
     "rights": "موتور تصمیم‌گیری سرمایه‌گذاری کریپتو",

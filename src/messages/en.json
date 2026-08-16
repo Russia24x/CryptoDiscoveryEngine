@@ -188,7 +188,17 @@
     "updateFailed": "Update failed",
     "saveFailed": "Save failed",
     "addFailed": "Add failed",
-    "removeFailed": "Remove failed"
+    "removeFailed": "Remove failed",
+    "dataManagement": "Data Management",
+    "dataManagementHint": "Clear your watchlist and compare set.",
+    "watchlist": "Watchlist",
+    "watchlistCount": "{count} starred assets",
+    "compareSet": "Compare Set",
+    "compareSetCount": "{count} assets in compare queue",
+    "clear": "Clear",
+    "confirmClear": "Confirm clear?",
+    "watchlistCleared": "Watchlist cleared",
+    "compareSetCleared": "Compare set cleared"
   },
   "footer": {
     "rights": "Crypto Investment Decision Engine",
