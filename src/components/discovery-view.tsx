@@ -192,6 +192,33 @@ export function DiscoveryView({
   });
   const trendBySymbol = trendData?.trends ?? {};
 
+  // Batch-fetch 7d price history for mini sparklines in the discovery table.
+  // Only fetches the top 10 visible rows to limit CoinPaprika API usage
+  // (free tier: 60 requests/hour). Cached 10 min on the client.
+  const priceTopSymbols = useMemo(() => {
+    return filteredRows.slice(0, 10).map((r) => r.symbol);
+  }, [filteredRows]);
+  const priceCacheKey = [...priceTopSymbols].sort().join(",");
+  const { data: priceBatchData } = useQuery<{
+    sparklines: Record<string, { changePct: number; closes: number[] } | null>;
+  }>({
+    queryKey: ["price-batch", priceCacheKey],
+    queryFn: async () => {
+      if (!priceTopSymbols.length) return { sparklines: {} };
+      const r = await fetch("/api/price-history-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbols: priceTopSymbols, days: 7 }),
+      });
+      if (!r.ok) return { sparklines: {} };
+      return r.json();
+    },
+    enabled: priceTopSymbols.length > 0,
+    staleTime: 10 * 60 * 1000, // 10 min — reduce CoinPaprika API usage
+    retry: false,
+  });
+  const priceBySymbol = priceBatchData?.sparklines ?? {};
+
   // Live counts for filter chips
   const counts = useMemo(() => {
     const c = {
@@ -551,6 +578,8 @@ export function DiscoveryView({
                   <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colEff")}</th>
                   <th className="py-2.5 px-3 text-center font-medium">{t("discovery.colMkt")}</th>
                   <th className="py-2.5 px-3 text-center font-medium hidden sm:table-cell">{t("discovery.colIAFinal")}</th>
+                  {/* 7d price sparkline — only visible on lg+ to save space */}
+                  <th className="py-2.5 px-3 text-center font-medium hidden lg:table-cell">{t("discovery.colPrice7d")}</th>
                   {/* Trend now visible on md+ (was lg only — effectively hidden on tablets) */}
                   <th className="py-2.5 px-3 text-center font-medium hidden md:table-cell">{t("discovery.colTrend")}</th>
                   <th className="py-2.5 px-2 text-center font-medium">{t("discovery.colGate")}</th>
@@ -562,7 +591,7 @@ export function DiscoveryView({
                 {isLoading &&
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td colSpan={12} className="py-3.5 px-3">
+                      <td colSpan={13} className="py-3.5 px-3">
                         <Skeleton className="h-9 w-full" />
                       </td>
                     </tr>
@@ -656,7 +685,7 @@ export function DiscoveryView({
                             <div className="h-1 w-14 rounded-full bg-muted overflow-hidden">
                               <div
                                 className={cn(
-                                  "h-full rounded-full transition-all duration-500",
+                                  "h-full rounded-full transition-all duration-700 ease-out",
                                   r.result.iaFinal >= 28
                                     ? "bg-emerald-500"
                                     : r.result.iaFinal >= 20
@@ -666,6 +695,37 @@ export function DiscoveryView({
                                 style={{ width: `${Math.max(4, (r.result.iaFinal / maxIAFinal) * 100)}%` }}
                               />
                             </div>
+                          </div>
+                        </td>
+                        {/* 7d price sparkline + change% */}
+                        <td className="py-3.5 px-3 text-center hidden lg:table-cell">
+                          <div className="flex flex-col items-center gap-0.5">
+                            {(() => {
+                              const p = priceBySymbol[r.symbol];
+                              if (!p || p.closes.length < 2) {
+                                return (
+                                  <span className="text-[9px] text-muted-foreground/50">
+                                    —
+                                  </span>
+                                );
+                              }
+                              const isUp = p.changePct >= 0;
+                              return (
+                                <>
+                                  <Sparkline
+                                    values={p.closes}
+                                    width={48}
+                                    height={16}
+                                  />
+                                  <span className={cn(
+                                    "text-[9px] font-mono font-semibold tabular-nums",
+                                    isUp ? "text-emerald-500" : "text-red-500",
+                                  )}>
+                                    {isUp ? "+" : ""}{p.changePct.toFixed(1)}%
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="py-3.5 px-3 text-center hidden md:table-cell">
@@ -707,7 +767,7 @@ export function DiscoveryView({
                   })}
                 {!isLoading && isError && (
                   <tr>
-                    <td colSpan={12} className="py-12">
+                    <td colSpan={13} className="py-12">
                       <div className="flex flex-col items-center gap-3 text-sm">
                         <div className="rounded-full bg-red-500/10 p-3">
                           <AlertTriangle className="h-6 w-6 text-red-500" />
@@ -730,7 +790,7 @@ export function DiscoveryView({
                 )}
                 {!isLoading && !isError && filteredRows.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="py-12">
+                    <td colSpan={13} className="py-12">
                       <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
                         <div className="rounded-full bg-muted p-3">
                           <Search className="h-5 w-5" />

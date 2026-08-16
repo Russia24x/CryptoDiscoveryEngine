@@ -72,6 +72,7 @@
     "errorHint": "ممکن است APIهای ارائه‌دهنده محدود شده باشند یا موقتاً در دسترس نباشند.",
     "retry": "تلاش دوباره",
     "colTrend": "روند",
+    "colPrice7d": "قیمت (۷ر)",
     "filterAll": "همه",
     "filterCategory": "دسته",
     "filterDecision": "تصمیم",

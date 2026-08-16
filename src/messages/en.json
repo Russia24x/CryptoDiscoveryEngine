@@ -72,6 +72,7 @@
     "errorHint": "Provider APIs may be rate-limited or temporarily unreachable.",
     "retry": "Retry",
     "colTrend": "Trend",
+    "colPrice7d": "Price (7d)",
     "filterAll": "All",
     "filterCategory": "Category",
     "filterDecision": "Decision",
