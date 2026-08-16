@@ -79,3 +79,43 @@ export const coingeckoProvider: DataProvider = {
     };
   },
 };
+
+/**
+ * Fallback historical price fetcher using CoinGecko's free public API.
+ *
+ * CoinGecko's /coins/{id}/market_chart endpoint returns hourly prices for
+ * up to 90 days, and daily prices for >90 days. The free tier allows
+ * ~50 calls/min (much higher than CoinPaprika's 60/hour).
+ *
+ * Used as a fallback when CoinPaprika is rate-limited (402 Payment Required).
+ *
+ * Returns an array of price values, oldest→newest. Empty array on failure.
+ */
+export async function getCoingeckoHistorical(
+  symbol: string,
+  days: number,
+  ctx: { fetch?: typeof fetch } = {},
+): Promise<number[]> {
+  // Find the CoinGecko coin ID by symbol using the /search endpoint.
+  const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(symbol)}`;
+  const search = await safeJsonFetch<{ coins: Array<{ id: string; symbol: string; market_cap_rank: number }> }>(searchUrl, ctx);
+  if (!search?.coins?.length) return [];
+
+  // Find exact symbol match, prefer highest market cap rank.
+  const matches = search.coins.filter(
+    (c) => c.symbol.toUpperCase() === symbol.toUpperCase(),
+  );
+  if (matches.length === 0) return [];
+
+  // Sort by market cap rank (lower = better, nulls last).
+  matches.sort((a, b) => (a.market_cap_rank ?? Infinity) - (b.market_cap_rank ?? Infinity));
+  const coinId = matches[0].id;
+
+  // Fetch historical prices. interval=daily for >1 day.
+  const chartUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+  const chart = await safeJsonFetch<{ prices: [number, number][] }>(chartUrl, ctx);
+  if (!chart?.prices?.length) return [];
+
+  // Extract just the price values (drop timestamps).
+  return chart.prices.map((p) => p[1]);
+}

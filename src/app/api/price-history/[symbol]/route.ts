@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHistoricalOHLCV, type CoinPaprikaCandle } from "@/providers/coinpaprika";
+import { getCached, setCached, priceCacheKey } from "@/lib/price-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 // GET /api/price-history/[symbol]?days=30
 // Returns historical OHLCV candles for the price chart in the detail view.
 // Works for ALL assets (CoinPaprika-backed), not just Binance-listed ones.
+// Uses the server-side price cache (10 min TTL) to reduce CoinPaprika calls.
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ symbol: string }> },
@@ -16,6 +18,34 @@ export async function GET(
   const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? "30"), 1), 365);
   const sym = symbol.toUpperCase();
   const ctx = { fetch };
+
+  // Check cache first (for the slim sparkline format). The detail view's
+  // full chart needs the complete candle array, so we only cache the slim
+  // format used by the batch endpoint. For the detail view, we fetch fresh
+  // data if days > 7 (the batch endpoint only caches 7d data).
+  if (days <= 7) {
+    const cached = getCached<{ changePct: number; closes: number[] } | null>(priceCacheKey(sym, days));
+    if (cached !== undefined && cached) {
+      // Reconstruct full candle array from cached closes for chart compatibility
+      const candles = cached.closes.map((c, i) => ({
+        t: new Date(Date.now() - (cached.closes.length - i) * 86400000).toISOString(),
+        o: c, h: c, l: c, c: c, v: 0,
+      }));
+      return NextResponse.json({
+        symbol: sym,
+        days,
+        candles,
+        summary: {
+          high: Math.max(...cached.closes),
+          low: Math.min(...cached.closes),
+          first: cached.closes[0],
+          last: cached.closes[cached.closes.length - 1],
+          changePct: cached.changePct,
+          count: cached.closes.length,
+        },
+      });
+    }
+  }
 
   try {
     const { candles, paprikaId } = await getHistoricalOHLCV(
@@ -42,7 +72,7 @@ export async function GET(
     // CoinPaprika free tier returns a single `price` per day (no OHLC),
     // so we set o/h/l/c all to that price for chart compatibility.
     const slim: Array<{
-      t: string;       // ISO date
+      t: string;
       o: number;
       h: number;
       l: number;
@@ -64,6 +94,11 @@ export async function GET(
     const first = closes[0] ?? 0;
     const last = closes[closes.length - 1] ?? 0;
     const changePct = first > 0 ? ((last - first) / first) * 100 : 0;
+
+    // Cache the slim format for 7d requests (used by batch endpoint too)
+    if (days <= 7) {
+      setCached(priceCacheKey(sym, days), { changePct, closes }, 10 * 60 * 1000);
+    }
 
     return NextResponse.json({
       symbol: sym,
