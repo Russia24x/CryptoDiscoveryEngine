@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { compareAssets } from "@/engine/percentile";
 import { demoAssets } from "@/providers/demo-data";
+import { getCachedInput, getAllCachedInputs } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,12 +33,16 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  // Look up from cache first (supports live assets), then demo.
   const targets = symbols
-    .map((s) => demoAssets.find((a) => a.symbol.toUpperCase() === s.toUpperCase()))
+    .map((s) => getCachedInput(s) ?? demoAssets.find((a) => a.symbol.toUpperCase() === s.toUpperCase()))
     .filter((x): x is NonNullable<typeof x> => Boolean(x));
   if (targets.length < 2) {
     return NextResponse.json({ error: "not enough known symbols" }, { status: 404 });
   }
-  const comparison = compareAssets(targets, demoAssets);
+  // Use cached peers (live scan set) if available, otherwise demo.
+  const peers = getAllCachedInputs();
+  const peerSet = peers.length > 0 ? peers : demoAssets;
+  const comparison = compareAssets(targets, peerSet);
   return NextResponse.json({ comparison });
 }

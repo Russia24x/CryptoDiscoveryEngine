@@ -2,21 +2,21 @@ import { NextResponse } from "next/server";
 import { runEngine } from "@/engine";
 import { deriveThesis } from "@/engine/thesis";
 import { demoAssets } from "@/providers/demo-data";
+import { getCachedInput } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Returns the living investment thesis for a symbol, derived from the engine
-// result. The thesis is computed on-demand (not persisted) — it reflects the
-// current demo-data state. When live data lands, this will reflect live state.
+// result. Looks up from scan cache first (supports live assets), then demo.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
-  const input = demoAssets.find(
+  const input = getCachedInput(symbol) ?? demoAssets.find(
     (a) => a.symbol.toUpperCase() === symbol.toUpperCase(),
-  );
+  ) ?? null;
   if (!input) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }

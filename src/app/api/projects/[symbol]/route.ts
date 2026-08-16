@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runEngine } from "@/engine";
 import { demoAssets } from "@/providers/demo-data";
+import { getCachedInput } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,9 +98,10 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
-  const input = demoAssets.find(
+  // Look up from cache first (populated by /api/scan), then fall back to demo.
+  const input = getCachedInput(symbol) ?? demoAssets.find(
     (a) => a.symbol.toUpperCase() === symbol.toUpperCase(),
-  );
+  ) ?? null;
   if (!input) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }

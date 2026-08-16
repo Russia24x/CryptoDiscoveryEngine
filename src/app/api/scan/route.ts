@@ -4,6 +4,7 @@ import { rankResults, type RankedRow } from "@/engine/ranking";
 import { demoAssets } from "@/providers/demo-data";
 import { listProviders } from "@/providers/registry";
 import { db } from "@/lib/db";
+import { cacheScanInputs } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,7 +138,7 @@ async function runLiveScan(): Promise<ScanResponse> {
     const rows = ranked
       .map((r) => ({ ...r, category: categoryBySymbol.get(r.symbol) }))
       .sort((a, b) => (a.rankMkt ?? 999) - (b.rankMkt ?? 999));
-    return {
+    const result: ScanResponse = {
       mode: "live",
       rows,
       totals: {
@@ -147,12 +148,17 @@ async function runLiveScan(): Promise<ScanResponse> {
       },
       note: "Live-derived estimates (free APIs). Tokenholder capture & risk components are approximated — confidence is intentionally low. Switch to Demo for the full auditable pipeline.",
     };
+    // Cache the live engine inputs so detail/thesis/benchmark routes can serve them.
+    cacheScanInputs(inputs, "live");
+    return result;
   } catch {
     return { ...runDemoScan(), note: "Live scan failed — demo data shown." };
   }
 }
 
 function runDemoScan(): ScanResponse {
+  // Cache the demo engine inputs so detail/thesis/benchmark routes can serve them.
+  cacheScanInputs(demoAssets, "demo");
   const results = demoAssets.map(runEngine);
   const ranked = rankResults(results);
   const categoryBySymbol = new Map(demoAssets.map((i) => [i.symbol, i.category]));
