@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/technical/[symbol]?interval=1d&limit=365
 // Fetches historical OHLCV from Binance, runs full technical analysis.
+// Falls back gracefully if the asset is not listed on Binance.
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ symbol: string }> },
@@ -14,19 +15,32 @@ export async function GET(
   const url = new URL(req.url);
   const interval = url.searchParams.get("interval") ?? "1d";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "365"), 1000);
+  const sym = symbol.toUpperCase();
 
-  // Fetch historical OHLCV from Binance
-  const pair = `${symbol.toUpperCase()}USDT`;
+  // Try Binance first (primary source for OHLCV)
+  const pair = `${sym}USDT`;
   const klinesUrl = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`;
 
   try {
     const res = await fetch(klinesUrl, { signal: AbortSignal.timeout(15000) });
+
     if (!res.ok) {
+      // Binance doesn't have this pair — return a clear message, not an error
+      if (res.status === 400) {
+        return NextResponse.json(
+          {
+            error: "not_on_binance",
+            message: `${sym} is not listed on Binance. Technical analysis requires OHLCV data which is only available for Binance-listed assets.`,
+          },
+          { status: 404 },
+        );
+      }
       return NextResponse.json(
         { error: `Binance API returned ${res.status}` },
         { status: 502 },
       );
     }
+
     const raw = (await res.json()) as unknown[][];
 
     // Parse klines: [time, open, high, low, close, volume, ...]
@@ -41,22 +55,26 @@ export async function GET(
 
     if (candles.length < 50) {
       return NextResponse.json(
-        { error: "Not enough historical data for analysis" },
+        {
+          error: "insufficient_data",
+          message: `Only ${candles.length} candles available. Need at least 50 for technical analysis.`,
+        },
         { status: 422 },
       );
     }
 
     // Run full technical analysis
-    const analysis = analyzeTechnical(symbol.toUpperCase(), candles);
+    const analysis = analyzeTechnical(sym, candles);
 
     return NextResponse.json({
-      symbol: symbol.toUpperCase(),
+      symbol: sym,
       candles: candles.length,
       analysis,
     });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
+      { error: "fetch_failed", message: msg },
       { status: 500 },
     );
   }

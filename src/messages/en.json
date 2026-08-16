@@ -296,6 +296,9 @@
     "safetyMargin": "Safety Margin",
     "fetchError": "Failed to fetch technical analysis data.",
     "loading": "Analyzing technical data...",
-    "notrade": "NO TRADE"
+    "notrade": "NO TRADE",
+    "notOnBinance": "{symbol} is not listed on Binance. Technical analysis requires OHLCV data from Binance.",
+    "insufficientData": "Not enough historical data for analysis (need at least 50 candles).",
+    "fetchFailed": "Failed to fetch data from Binance."
   }
 }

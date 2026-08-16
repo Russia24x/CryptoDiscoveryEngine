@@ -91,13 +91,19 @@ const SIGNAL_COLORS: Record<string, string> = {
 
 export function TechnicalPanel({ symbol }: { symbol: string }) {
   const t = useTranslations();
-  const { data, isLoading, isError } = useQuery<{ analysis: TechnicalAnalysis }>({
+  const { data, isLoading, isError, error } = useQuery<{
+    analysis?: TechnicalAnalysis;
+    error?: string;
+    message?: string;
+  }>({
     queryKey: ["technical", symbol],
     queryFn: async () => {
       const r = await fetch(`/api/technical/${symbol}?interval=1d&limit=365`);
-      if (!r.ok) throw new Error("failed");
-      return r.json();
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.message || json.error || "failed");
+      return json;
     },
+    retry: 1,
   });
 
   if (isLoading) {
@@ -116,6 +122,18 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
   }
 
   if (isError || !data?.analysis) {
+    let errorMsg = t("technical.fetchError");
+    // react-query error can be an Error or a string
+    const errStr = error instanceof Error
+      ? error.message
+      : typeof error === "string" ? error : "";
+    if (errStr.includes("not listed on Binance") || errStr.includes("not_on_binance")) {
+      errorMsg = t("technical.notOnBinance", { symbol });
+    } else if (errStr.includes("Not enough") || errStr.includes("insufficient")) {
+      errorMsg = t("technical.insufficientData");
+    } else if (errStr && errStr !== "failed") {
+      errorMsg = errStr;
+    }
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -125,9 +143,11 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>{t("technical.fetchError")}</span>
+          <div className="flex flex-col items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
