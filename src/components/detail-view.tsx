@@ -80,6 +80,10 @@ export function DetailView({
 
   const result = data?.result ?? row.result;
   const c = result.components;
+  // Detect stub RankedRow (from command palette) — all-zero scores mean
+  // the real data hasn't loaded yet. Show skeleton instead of zero values.
+  const isStub = !data && row.result.iaFinal === 0 && row.result.iaRaw === 0;
+  const showLoading = isLoading || isStub;
 
   // Compare-set state (localStorage-backed, SSR-safe via useSyncExternalStore).
   const [compareSet, setCompareSet] = useLocalStorage<string[]>("compare-set", []);
@@ -106,7 +110,7 @@ export function DetailView({
               variant="outline"
               size="sm"
               onClick={handleAddToCompare}
-              disabled={compareAdded}
+              disabled={compareAdded || showLoading}
               className="gap-1.5"
             >
               {compareAdded ? (
@@ -122,24 +126,36 @@ export function DetailView({
               )}
             </Button>
           )}
-          <DecisionBadge decision={result.decision} />
+          {!showLoading && <DecisionBadge decision={result.decision} />}
         </div>
       </div>
 
       {/* Title block — REMOVED, merged into CoinInfoPanel */}
 
-      {isError && !isLoading && (
+      {isError && !showLoading && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{t("detail.dataError")}</span>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40" />
-          ))}
+      {showLoading ? (
+        <div className="space-y-4">
+          {/* Asset overview skeleton */}
+          <Skeleton className="h-32 w-full rounded-xl" />
+          {/* Four-tier ranking skeleton */}
+          <Skeleton className="h-28 w-full rounded-xl" />
+          {/* Two-column grid skeleton */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-48 rounded-xl" />
+            <Skeleton className="h-48 rounded-xl" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-48 rounded-xl" />
+            <Skeleton className="h-48 rounded-xl" />
+          </div>
+          {/* Explanation skeleton */}
+          <Skeleton className="h-40 w-full rounded-xl" />
         </div>
       ) : (
         <>

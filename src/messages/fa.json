@@ -232,7 +232,13 @@
     "shareCompare": "اشتراک‌گذاری مقایسه",
     "shareCopied": "لینک مقایسه کپی شد",
     "metricWinner": "برندهٔ متریک‌ها",
-    "winsCount": "برنده در {wins} از {total} متریک"
+    "winsCount": "برنده در {wins} از {total} متریک",
+    "insightsTitle": "بینش‌های مقایسه",
+    "insightsHint": "خلاصهٔ خودکار نقاط قوت و ضعف هر دارایی بر اساس رتبه‌بندی متریک‌ها",
+    "strengths": "نقاط قوت",
+    "weaknesses": "ضعف‌ها",
+    "winRate": "نرخ برد",
+    "noInsights": "داده کافی برای بینش نیست"
   },
   "thesis": {
     "title": "تز سرمایه‌گذاری",

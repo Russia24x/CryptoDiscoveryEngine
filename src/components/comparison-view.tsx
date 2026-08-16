@@ -26,6 +26,8 @@ import {
   Compass,
   Share2,
   Check,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { cn, fmtScore } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
@@ -286,6 +288,34 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
     entries.sort((a, b) => b[1] - a[1]);
     return entries[0][1] > 0 ? { symbol: entries[0][0], wins: entries[0][1], total: comp?.rows.length ?? 0 } : null;
   }, [metricWins, comp]);
+
+  // Build per-symbol insights: top 2 strengths (metrics where they rank #1)
+  // and top 1 weakness (metric where they rank last). Used for the insights
+  // section below the matrix.
+  const insights = useMemo(() => {
+    if (!comp) return [];
+    return comp.symbols.map((sym) => {
+      const strengths: { metric: string; label: string }[] = [];
+      const weaknesses: { metric: string; label: string }[] = [];
+      for (const row of comp.rows) {
+        const cell = row.cells.find((c) => c.symbol === sym);
+        if (!cell) continue;
+        if (cell.rank === 1) {
+          strengths.push({ metric: row.metric, label: row.label });
+        }
+        const maxRank = Math.max(...row.cells.map((c) => c.rank));
+        if (cell.rank === maxRank && maxRank > 1) {
+          weaknesses.push({ metric: row.metric, label: row.label });
+        }
+      }
+      return {
+        symbol: sym,
+        strengths: strengths.slice(0, 3),
+        weaknesses: weaknesses.slice(0, 2),
+        winRate: comp.rows.length > 0 ? (metricWins[sym] ?? 0) / comp.rows.length : 0,
+      };
+    });
+  }, [comp, metricWins]);
 
   return (
     <div className="space-y-6">
@@ -614,6 +644,76 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
               </div>
             </CardContent>
           </Card>
+
+          {/* Comparison Insights — auto-generated strength/weakness summary */}
+          {insights.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {t("compare.insightsTitle")}
+                </CardTitle>
+                <CardDescription>{t("compare.insightsHint")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {insights.map((ins) => {
+                    const idx = comp.symbols.indexOf(ins.symbol);
+                    const palette = PALETTE[idx % PALETTE.length];
+                    return (
+                      <div
+                        key={ins.symbol}
+                        className={cn(
+                          "rounded-xl border bg-gradient-to-br p-3 space-y-2",
+                          palette,
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm">{ins.symbol}</span>
+                          <span className="text-[10px] opacity-70 font-mono">
+                            {Math.round(ins.winRate * 100)}% {t("compare.winRate")}
+                          </span>
+                        </div>
+                        {ins.strengths.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] uppercase tracking-wide text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              {t("compare.strengths")}
+                            </div>
+                            {ins.strengths.map((s) => (
+                              <div key={s.metric} className="text-[11px] flex items-center gap-1">
+                                <span className="text-emerald-500">+</span>
+                                <span className="truncate">{s.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {ins.weaknesses.length > 0 && (
+                          <div className="space-y-1 pt-1 border-t border-current/10">
+                            <div className="text-[10px] uppercase tracking-wide text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
+                              <TrendingDown className="h-3 w-3" />
+                              {t("compare.weaknesses")}
+                            </div>
+                            {ins.weaknesses.map((w) => (
+                              <div key={w.metric} className="text-[11px] flex items-center gap-1">
+                                <span className="text-red-500">−</span>
+                                <span className="truncate">{w.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {ins.strengths.length === 0 && ins.weaknesses.length === 0 && (
+                          <div className="text-[11px] text-muted-foreground italic">
+                            {t("compare.noInsights")}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Actions: Refresh + Share */}
           <div className="flex flex-wrap justify-center gap-2">

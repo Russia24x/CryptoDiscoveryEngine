@@ -542,6 +542,7 @@ export function DiscoveryView({
                         key={r.symbol}
                         onClick={() => onSelect(r)}
                         tabIndex={0}
+                        aria-label={`Row ${idx + 1} of ${filteredRows.length}, ${r.symbol} ${r.name}, rank ${r.rankMkt}, decision ${r.result.decision}`}
                         className={cn(
                           "border-b border-border/30 last:border-0 cursor-pointer transition-all group outline-none",
                           idx % 2 === 1 ? "bg-foreground/[0.06]" : "",

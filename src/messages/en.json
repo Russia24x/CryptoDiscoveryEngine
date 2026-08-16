@@ -232,7 +232,13 @@
     "shareCompare": "Share comparison",
     "shareCopied": "Comparison link copied to clipboard",
     "metricWinner": "Metric Winner",
-    "winsCount": "Wins {wins} of {total} metrics"
+    "winsCount": "Wins {wins} of {total} metrics",
+    "insightsTitle": "Comparison Insights",
+    "insightsHint": "Auto-generated strength and weakness summary per asset based on metric rankings",
+    "strengths": "Strengths",
+    "weaknesses": "Weaknesses",
+    "winRate": "win rate",
+    "noInsights": "Not enough data for insights"
   },
   "thesis": {
     "title": "Investment Thesis",
