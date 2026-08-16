@@ -11,7 +11,7 @@ import type { View } from "./app-shell";
 const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
   { key: "discovery", icon: Compass, labelKey: "nav.discovery" },
   { key: "compare", icon: GitCompare, labelKey: "compare.title" },
-  { key: "feeds", icon: Newspaper, labelKey: "feedsView.title" },
+  { key: "feeds", icon: Newspaper, labelKey: "feedsView.feedsTitle" },
   { key: "settings", icon: SettingsIcon, labelKey: "nav.settings" },
 ];
 
