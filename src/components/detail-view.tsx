@@ -26,6 +26,7 @@ import {
   Scale,
   AlertTriangle,
   Plus,
+  Star,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
 import type { EngineInputs, EngineResult } from "@/engine";
@@ -88,6 +89,9 @@ export function DetailView({
   // Compare-set state (localStorage-backed, SSR-safe via useSyncExternalStore).
   const [compareSet, setCompareSet] = useLocalStorage<string[]>("compare-set", []);
   const compareAdded = compareSet.includes(row.symbol);
+  // Watchlist state (shared with discovery view via localStorage).
+  const [watchlist, setWatchlist] = useLocalStorage<string[]>("watchlist", []);
+  const inWatchlist = watchlist.includes(row.symbol);
 
   const handleAddToCompare = () => {
     setCompareSet((prev) =>
@@ -105,6 +109,22 @@ export function DetailView({
           {t("detail.back")}
         </Button>
         <div className="flex items-center gap-2">
+          {/* Watchlist star toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setWatchlist((prev) =>
+              prev.includes(row.symbol)
+                ? prev.filter((s) => s !== row.symbol)
+                : [...prev, row.symbol],
+            )}
+            disabled={showLoading}
+            className="gap-1.5"
+            title={inWatchlist ? t("discovery.removeFromWatchlist") : t("discovery.addToWatchlist")}
+          >
+            <Star className={cn("h-3.5 w-3.5", inWatchlist && "fill-current text-amber-500")} />
+            <span className="hidden sm:inline">{inWatchlist ? t("discovery.inWatchlist") : t("discovery.addToWatchlist")}</span>
+          </Button>
           {onAddToCompare && (
             <Button
               variant="outline"

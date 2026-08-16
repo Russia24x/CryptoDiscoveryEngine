@@ -90,7 +90,12 @@
     "scoreLow": "Low",
     "kbdHint": "Use arrow keys to navigate, Enter to open",
     "cmdkPlaceholder": "Search asset or open view…",
-    "cmdkHint": "Press Cmd+K or Ctrl+K for quick search"
+    "cmdkHint": "Press Cmd+K or Ctrl+K for quick search",
+    "watchlist": "Watchlist",
+    "watchlistHint": "Show only starred assets",
+    "addToWatchlist": "Add to Watchlist",
+    "removeFromWatchlist": "Remove from Watchlist",
+    "inWatchlist": "In Watchlist"
   },
   "decision": {
     "BUY": "BUY",

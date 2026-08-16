@@ -39,9 +39,11 @@ import {
   Database,
   Clock,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
 import { cn, decisionClass, fmtScore } from "@/lib/format";
+import { useLocalStorage } from "@/lib/use-local-storage";
 import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
 
@@ -82,6 +84,9 @@ export function DiscoveryView({
   const [gateFilter, setGateFilter] = useState<GateFilter>("all");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Watchlist: persisted to localStorage, shared with detail view.
+  const [watchlist, setWatchlist] = useLocalStorage<string[]>("watchlist", []);
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   // Keyboard navigation: tracks which row is "focused" via arrow keys.
   // -1 = no keyboard focus. Enter opens the detail view for the focused row.
   const [kbdIdx, setKbdIdx] = useState<number>(-1);
@@ -150,6 +155,7 @@ export function DiscoveryView({
       }
       if (decisionFilter !== "all" && r.result.decision !== decisionFilter) return false;
       if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
+      if (watchlistOnly && !watchlist.includes(r.symbol)) return false;
       if (q) {
         const sym = r.symbol.toUpperCase();
         const name = (r.name ?? "").toUpperCase();
@@ -158,7 +164,7 @@ export function DiscoveryView({
       }
       return true;
     });
-  }, [sortedRows, search, gateFilter, decisionFilter, categoryFilter]);
+  }, [sortedRows, search, gateFilter, decisionFilter, categoryFilter, watchlistOnly, watchlist]);
 
   // max IA final for relative bar scaling
   const maxIAFinal = Math.max(...sortedRows.map((r) => r.result.iaFinal), 1);
@@ -256,6 +262,17 @@ export function DiscoveryView({
   // Clamp keyboard index when filteredRows changes (avoids out-of-bounds
   // when filters reduce the result set). Derived, not effect-based.
   const safeKbdIdx = kbdIdx >= filteredRows.length ? -1 : kbdIdx;
+
+  // Watchlist toggle: add/remove a symbol from the localStorage watchlist.
+  const toggleWatchlist = useCallback((symbol: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setWatchlist((prev) =>
+      prev.includes(symbol)
+        ? prev.filter((s) => s !== symbol)
+        : [...prev, symbol],
+    );
+  }, [setWatchlist]);
 
   return (
     <div className="space-y-5">
@@ -428,6 +445,23 @@ export function DiscoveryView({
               label={t("discovery.gateFailed")}
               tone="bad"
             />
+            {/* Watchlist filter chip — toggles showing only starred assets */}
+            <button
+              onClick={() => setWatchlistOnly((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ms-2",
+                watchlistOnly
+                  ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : "border-border/60 bg-card/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+              title={t("discovery.watchlistHint")}
+            >
+              <Star className={cn("h-3 w-3", watchlistOnly && "fill-current")} />
+              <span>{t("discovery.watchlist")}</span>
+              {watchlist.length > 0 && (
+                <span className="text-[10px] font-bold tabular-nums opacity-80">{watchlist.length}</span>
+              )}
+            </button>
           </div>
 
           {/* Decision filter chips */}
@@ -465,13 +499,14 @@ export function DiscoveryView({
             <span className="text-xs text-muted-foreground tabular-nums">
               {t("discovery.resultsCount", { count: filteredRows.length })}
             </span>
-            {(gateFilter !== "all" || decisionFilter !== "all" || categoryFilter !== "all" || search) && (
+            {(gateFilter !== "all" || decisionFilter !== "all" || categoryFilter !== "all" || search || watchlistOnly) && (
               <button
                 onClick={() => {
                   setGateFilter("all");
                   setDecisionFilter("all");
                   setCategoryFilter("all");
                   setSearch("");
+                  setWatchlistOnly(false);
                 }}
                 className="text-xs text-primary hover:underline"
               >
@@ -584,6 +619,20 @@ export function DiscoveryView({
                                 {r.name}
                               </span>
                             </div>
+                            {/* Watchlist star toggle */}
+                            <button
+                              onClick={(e) => toggleWatchlist(r.symbol, e)}
+                              className={cn(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-md transition-all shrink-0",
+                                watchlist.includes(r.symbol)
+                                  ? "text-amber-500 hover:bg-amber-500/10"
+                                  : "text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100",
+                              )}
+                              title={watchlist.includes(r.symbol) ? t("discovery.removeFromWatchlist") : t("discovery.addToWatchlist")}
+                              aria-label={watchlist.includes(r.symbol) ? t("discovery.removeFromWatchlist") : t("discovery.addToWatchlist")}
+                            >
+                              <Star className={cn("h-3.5 w-3.5", watchlist.includes(r.symbol) && "fill-current")} />
+                            </button>
                           </div>
                         </td>
                         <td className="py-3.5 px-3 hidden md:table-cell">

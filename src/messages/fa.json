@@ -90,7 +90,12 @@
     "scoreLow": "پایین",
     "kbdHint": "از کلیدهای جهتی برای پیمایش و Enter برای باز کردن استفاده کن",
     "cmdkPlaceholder": "جستجوی دارایی یا باز کردن نما…",
-    "cmdkHint": "برای جستجوی سریع Cmd+K یا Ctrl+K را بزن"
+    "cmdkHint": "برای جستجوی سریع Cmd+K یا Ctrl+K را بزن",
+    "watchlist": "فهرست نظارت",
+    "watchlistHint": "فقط دارایی‌های نشانه‌گذاری‌شده را نشان بده",
+    "addToWatchlist": "افزودن به فهرست نظارت",
+    "removeFromWatchlist": "حذف از فهرست نظارت",
+    "inWatchlist": "در فهرست نظارت"
   },
   "decision": {
     "BUY": "خرید",
