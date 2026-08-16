@@ -89,8 +89,11 @@ async function runScan(): Promise<ScanResponse> {
     }
 
     // Derive engine inputs from the merged data.
+    // Sort by market cap descending (so top assets are discovered first),
+    // then filter to assets with real data, then take top 100.
     const inputs: EngineInputs[] = Array.from(map.values())
       .filter((p) => (p.fees24h ?? 0) > 0 || (p.revenue24h ?? 0) > 0 || (p.mc ?? 0) > 0)
+      .sort((a, b) => (b.mc ?? 0) - (a.mc ?? 0))
       .slice(0, 100)
       .map((p) => {
         const pr = (p.revenue24h ?? 0) * 365;

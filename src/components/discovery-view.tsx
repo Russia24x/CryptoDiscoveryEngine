@@ -68,6 +68,21 @@ export function DiscoveryView({
     placeholderData: (prev) => prev,
   });
 
+  // Fetch logos for all scanned symbols (batch, cached 1h)
+  const logoSymbols = (data?.rows ?? []).map((r) => r.symbol);
+  const { data: logosData } = useQuery<{ logos: Record<string, string | null> }>({
+    queryKey: ["logos", logoSymbols.slice(0, 20).join(",")],
+    queryFn: async () => {
+      if (!logoSymbols.length) return { logos: {} };
+      const r = await fetch(`/api/logos?symbols=${logoSymbols.slice(0, 20).join(",")}`);
+      if (!r.ok) return { logos: {} };
+      return r.json();
+    },
+    enabled: logoSymbols.length > 0,
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+  const logoBySymbol = logosData?.logos ?? {};
+
   const rows = (data?.rows ?? []).slice().sort((a, b) => {
     // Type-safe sort value extraction — no `as any` casts.
     const getValue = (r: RankedRow): number => {
@@ -89,24 +104,24 @@ export function DiscoveryView({
   const maxIAFinal = Math.max(...rows.map((r) => r.result.iaFinal), 1);
 
   // Batch-fetch trends for ALL rows in one request (avoids N+1 per-row fetches).
-  const symbols = rows.map((r) => r.symbol);
+  const trendSymbols = rows.map((r) => r.symbol);
   // Sort symbols for a stable cache key — otherwise re-sorting the table
   // (which reorders `rows`) would create a new cache entry for the same
   // symbol set, triggering redundant fetches.
-  const cacheKey = [...symbols].sort().join(",");
+  const cacheKey = [...trendSymbols].sort().join(",");
   const { data: trendData } = useQuery<{ trends: Record<string, TrendPoint[]> }>({
     queryKey: ["trends-batch", cacheKey],
     queryFn: async () => {
-      if (!symbols.length) return { trends: {} };
+      if (!trendSymbols.length) return { trends: {} };
       const r = await fetch("/api/trend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbols }),
+        body: JSON.stringify({ symbols: trendSymbols }),
       });
       if (!r.ok) return { trends: {} };
       return r.json();
     },
-    enabled: symbols.length > 0,
+    enabled: trendSymbols.length > 0,
     staleTime: 60_000,
   });
   const trendBySymbol = trendData?.trends ?? {};
@@ -256,7 +271,26 @@ export function DiscoveryView({
                         </td>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold">
+                            {logoBySymbol[r.symbol] ? (
+                              <img
+                                src={logoBySymbol[r.symbol]!}
+                                alt={r.symbol}
+                                className="h-8 w-8 rounded-lg border border-border/40 bg-muted shrink-0"
+                                loading="lazy"
+                                onError={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  img.onerror = null;
+                                  img.src = '';
+                                  img.className = 'hidden';
+                                  const fallback = img.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'inline-flex';
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold shrink-0"
+                              style={{ display: logoBySymbol[r.symbol] ? 'none' : 'inline-flex' }}
+                            >
                               {r.symbol.slice(0, 3)}
                             </span>
                             <div className="flex flex-col leading-tight">

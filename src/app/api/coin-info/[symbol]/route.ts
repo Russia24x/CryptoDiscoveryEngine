@@ -106,9 +106,10 @@ export async function GET(
       symbol: sym,
       name: paprikaData?.coin?.name ?? cached?.name ?? sym,
       description: paprikaData?.coin?.description ?? "",
-      image: paprikaData?.coin?.id
-        ? `https://coinpaprika.com/coin/${paprikaData.coin.id}/logo.png`
-        : null,
+      image: paprikaData?.coin?.logo
+        ?? (paprikaData?.coin?.id
+          ? `https://static.coinpaprika.com/coin/${paprikaData.coin.id}/logo.png`
+          : null),
       links,
       social,
       market,

@@ -24,6 +24,7 @@ export interface CoinPaprikaCoin {
   description: string;
   open_source: boolean;
   hardware_wallet: boolean;
+  logo: string;          // e.g. "https://static.coinpaprika.com/coin/bnb-bnb/logo.png"
   links: {
     website: string[];
     explorer: string[];
