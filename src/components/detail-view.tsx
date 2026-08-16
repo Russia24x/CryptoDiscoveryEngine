@@ -32,6 +32,7 @@ import { cn, fmtUsd, fmtPct, fmtScore, barColor01, scoreColor01 } from "@/lib/fo
 import { DecisionBadge } from "./decision-badge";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { ThesisPanel } from "./thesis-panel";
+import { TechnicalPanel } from "./technical-panel";
 
 interface DetailResp {
   input: EngineInputs;
@@ -390,6 +391,9 @@ export function DetailView({
 
           {/* Investment Thesis (V1.4) */}
           <ThesisPanel symbol={row.symbol} />
+
+          {/* Technical Analysis (TAF Framework) */}
+          <TechnicalPanel symbol={row.symbol} />
         </>
       )}
     </div>
