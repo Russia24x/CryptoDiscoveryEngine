@@ -24,6 +24,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { demoAssets } from "@/providers/demo-data";
+import { getAllCachedInputs, getCachedInput } from "@/lib/scan-cache";
 import { cn, fmtScore, fmtUsd } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -150,8 +151,12 @@ export function ComparisonView() {
             <div className="text-xs font-medium text-muted-foreground mb-2">
               {t("compare.selectAssets")}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {demoAssets.map((a, idx) => {
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scroll-thin pe-1">
+              {((): typeof demoAssets => {
+                // Use cached scan inputs (live assets) if available, else demo.
+                const cached = getAllCachedInputs();
+                return cached.length > 0 ? cached : demoAssets;
+              })().map((a, idx) => {
                 const isSel = selected.includes(a.symbol);
                 const palette = PALETTE[selected.indexOf(a.symbol) % PALETTE.length];
                 return (
@@ -276,7 +281,10 @@ export function ComparisonView() {
                 {t("compare.metric")}
               </CardTitle>
               <CardDescription>
-                {t("benchmark.peerCount", { count: demoAssets.length })}
+                {t("benchmark.peerCount", { count: (() => {
+                const cached = getAllCachedInputs();
+                return cached.length > 0 ? cached.length : demoAssets.length;
+              })() })}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
