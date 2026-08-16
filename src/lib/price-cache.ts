@@ -13,6 +13,10 @@
  * within the same Next.js dev server process. Multi-instance deployments
  * would need a shared cache (Redis), but for this project's single-process
  * dev server, in-memory is sufficient.
+ *
+ * NOTE: getCached returns `undefined` for cache MISS (key not found / expired)
+ * and the cached value (which may be `null`) for cache HIT. This distinguishes
+ * "not cached yet" from "cached null result" (e.g. asset not on CoinPaprika).
  */
 
 interface CacheEntry<T> {
@@ -24,13 +28,17 @@ const DEFAULT_TTL_MS = 10 * 60 * 1000; // 10 min
 
 const cache = new Map<string, CacheEntry<unknown>>();
 
-/** Get a cached value by key, or null if expired/missing. */
-export function getCached<T>(key: string): T | null {
+/**
+ * Get a cached value by key.
+ * Returns `undefined` for cache miss (key not found / expired).
+ * Returns the cached value (which may be `null`) for cache hit.
+ */
+export function getCached<T>(key: string): T | undefined {
   const entry = cache.get(key);
-  if (!entry) return null;
+  if (!entry) return undefined;
   if (Date.now() > entry.expiresAt) {
     cache.delete(key);
-    return null;
+    return undefined;
   }
   return entry.data as T;
 }
