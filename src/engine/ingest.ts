@@ -87,6 +87,28 @@ export function parseRss(xml: string): IngestedItem[] {
     const title = stripHtml(extractTag(itemXml, "title"));
     const link = stripHtml(extractTag(itemXml, "link"));
     const description = stripHtml(extractTag(itemXml, "description"));
+    // Get full content from content:encoded (has full article text + images)
+    const contentEncoded = extractTag(itemXml, "content:encoded");
+    const fullContent = contentEncoded ? stripHtml(contentEncoded) : description;
+    // Extract images from media:content, enclosure, or content:encoded
+    const mediaUrls: string[] = [];
+    // media:content url="..."
+    const mediaMatches = itemXml.matchAll(/<media:content[^>]+url="([^"]+)"/gi);
+    for (const m of mediaMatches) {
+      if (m[1] && /\.(jpg|jpeg|png|gif|webp)/i.test(m[1])) mediaUrls.push(m[1]);
+    }
+    // enclosure url="..." (type="image/...")
+    const enclosureMatches = itemXml.matchAll(/<enclosure[^>]+url="([^"]+)"[^>]+type="image/gi);
+    for (const m of enclosureMatches) {
+      if (m[1]) mediaUrls.push(m[1]);
+    }
+    // <img src="..."> inside content:encoded
+    if (contentEncoded) {
+      const imgMatches = contentEncoded.matchAll(/<img[^>]+src=["']([^"']+)/gi);
+      for (const m of imgMatches) {
+        if (m[1] && !mediaUrls.includes(m[1])) mediaUrls.push(m[1]);
+      }
+    }
     const pubDateStr = extractTag(itemXml, "pubDate");
     const pubDate = pubDateStr ? new Date(pubDateStr) : new Date();
     if (isNaN(pubDate.getTime())) continue;
@@ -94,9 +116,10 @@ export function parseRss(xml: string): IngestedItem[] {
     items.push({
       externalId,
       title: title || "(untitled)",
-      body: description ? description.slice(0, 500) : undefined,
+      body: fullContent || undefined, // full content, no truncation
       url: link || undefined,
       publishedAt: pubDate,
+      mediaUrls: mediaUrls.length > 0 ? mediaUrls.slice(0, 5) : undefined, // up to 5 images
     });
   }
   return items;

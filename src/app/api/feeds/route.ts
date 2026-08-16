@@ -9,6 +9,7 @@ const DEFAULT_FEED_SOURCES = [
   { kind: "rss", name: "ArzDigital — Blog", address: "https://arzdigital.com/blog/feed/", enabled: true },
   { kind: "rss", name: "MihanBlockchain — Markets", address: "https://mihanblockchain.com/category/markets/feed/", enabled: true },
   { kind: "rss", name: "MihanBlockchain — News", address: "https://mihanblockchain.com/category/news/feed/", enabled: true },
+  { kind: "telegram", name: "Mastersharkcrypto", address: "https://t.me/Mastersharkcrypto", enabled: true },
 ];
 
 async function ensureSeedFeeds() {
