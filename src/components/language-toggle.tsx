@@ -4,7 +4,6 @@ import { useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { Languages } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export function LanguageToggle() {
   const locale = useLocale();
@@ -15,7 +14,6 @@ export function LanguageToggle() {
   const next = locale === "fa" ? "en" : "fa";
 
   const switchLocale = () => {
-    // pathname already includes the current locale segment under [locale]
     const segments = pathname.split("/");
     segments[1] = next;
     const newPath = segments.join("/") || "/";
@@ -25,16 +23,15 @@ export function LanguageToggle() {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
       onClick={switchLocale}
       disabled={isPending}
-      className="gap-2 font-medium"
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/60"
       aria-label="Toggle language"
+      title={next.toUpperCase()}
     >
-      <Languages className="h-4 w-4" />
-      {next.toUpperCase()}
-    </Button>
+      <Languages className="h-4 w-4 shrink-0" />
+      <span className="font-semibold">{next.toUpperCase()}</span>
+    </button>
   );
 }

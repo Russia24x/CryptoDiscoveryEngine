@@ -2,7 +2,6 @@
 
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,20 +14,23 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Toggle theme">
-          <Sun className="h-[1.1rem] w-[1.1rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[1.1rem] w-[1.1rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        </Button>
+        <button
+          className="inline-flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/60 relative h-8 w-8"
+          aria-label="Toggle theme"
+        >
+          <Sun className="h-[1.05rem] w-[1.05rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.05rem] w-[1.05rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          <Sun className="me-2 h-4 w-4" /> Light
+      <DropdownMenuContent align="end" className="min-w-[120px]">
+        <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2 text-xs">
+          <Sun className="h-3.5 w-3.5" /> Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          <Moon className="me-2 h-4 w-4" /> Dark
+        <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2 text-xs">
+          <Moon className="h-3.5 w-3.5" /> Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          <Monitor className="me-2 h-4 w-4" /> System
+        <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2 text-xs">
+          <Monitor className="h-3.5 w-3.5" /> System
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
