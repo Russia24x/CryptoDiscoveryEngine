@@ -23,6 +23,7 @@ import {
 import {
   Radar,
   Play,
+  RefreshCw,
   TrendingUp,
   CheckCircle2,
   XCircle,
@@ -136,7 +137,11 @@ export function DiscoveryView({
                 disabled={isFetching}
                 className="gap-2 h-9"
               >
-                <Play className="h-4 w-4" />
+                {isFetching ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
                 {isFetching ? t("discovery.scanning") : t("discovery.runScan")}
               </Button>
             </div>
