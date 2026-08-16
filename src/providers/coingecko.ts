@@ -91,25 +91,47 @@ export const coingeckoProvider: DataProvider = {
  *
  * Returns an array of price values, oldest→newest. Empty array on failure.
  */
+
+// In-memory cache for CoinGecko coin IDs (symbol → coinId).
+// Avoids repeated /search calls for the same symbol.
+// A null value means "searched but not found" — don't retry.
+const geckoIdCache = new Map<string, string | null>();
+
 export async function getCoingeckoHistorical(
   symbol: string,
   days: number,
   ctx: { fetch?: typeof fetch } = {},
 ): Promise<number[]> {
-  // Find the CoinGecko coin ID by symbol using the /search endpoint.
-  const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(symbol)}`;
-  const search = await safeJsonFetch<{ coins: Array<{ id: string; symbol: string; market_cap_rank: number }> }>(searchUrl, ctx);
-  if (!search?.coins?.length) return [];
+  const sym = symbol.toUpperCase();
 
-  // Find exact symbol match, prefer highest market cap rank.
-  const matches = search.coins.filter(
-    (c) => c.symbol.toUpperCase() === symbol.toUpperCase(),
-  );
-  if (matches.length === 0) return [];
+  // Check ID cache first
+  let coinId = geckoIdCache.get(sym);
+  if (coinId === undefined) {
+    // Not cached — search for the coin ID
+    const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(sym)}`;
+    const search = await safeJsonFetch<{ coins: Array<{ id: string; symbol: string; market_cap_rank: number }> }>(searchUrl, ctx);
+    if (!search?.coins?.length) {
+      geckoIdCache.set(sym, null);
+      return [];
+    }
 
-  // Sort by market cap rank (lower = better, nulls last).
-  matches.sort((a, b) => (a.market_cap_rank ?? Infinity) - (b.market_cap_rank ?? Infinity));
-  const coinId = matches[0].id;
+    // Find exact symbol match, prefer highest market cap rank.
+    const matches = search.coins.filter(
+      (c) => c.symbol.toUpperCase() === sym,
+    );
+    if (matches.length === 0) {
+      geckoIdCache.set(sym, null);
+      return [];
+    }
+
+    // Sort by market cap rank (lower = better, nulls last).
+    matches.sort((a, b) => (a.market_cap_rank ?? Infinity) - (b.market_cap_rank ?? Infinity));
+    coinId = matches[0].id;
+    geckoIdCache.set(sym, coinId);
+  }
+
+  // coinId is null if previously searched and not found
+  if (!coinId) return [];
 
   // Fetch historical prices. interval=daily for >1 day.
   const chartUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
