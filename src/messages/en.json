@@ -224,7 +224,10 @@
     "needScanHint": "Run a market scan first so asset data is loaded into the cache for comparison.",
     "goToDiscovery": "Go to Discovery Scanner",
     "emptyTitle": "Select assets to compare",
-    "emptyHint": "Tap \"Add to Compare\" from any asset detail page, or click the assets below."
+    "emptyHint": "Tap \"Add to Compare\" from any asset detail page, or click the assets below.",
+    "removeAsset": "Remove {symbol} from comparison",
+    "shareCompare": "Share comparison",
+    "shareCopied": "Comparison link copied to clipboard"
   },
   "thesis": {
     "title": "Investment Thesis",

@@ -74,11 +74,9 @@ export function PriceChartCard({ symbol }: { symbol: string }) {
       return json;
     },
     staleTime: 5 * 60 * 1000, // 5 min
-    retry: (err: unknown) => {
-      const status = (err as { status?: number })?.status;
-      if (status === 404) return false;
-      return true;
-    },
+    // retry: false for ALL errors — same infinite-loop risk as TechnicalPanel
+    // if we used a retry function that returns true for non-404s.
+    retry: false,
   });
 
   const candles = data?.candles ?? [];

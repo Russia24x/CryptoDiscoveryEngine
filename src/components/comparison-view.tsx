@@ -24,6 +24,8 @@ import {
   RotateCw,
   Database,
   Compass,
+  Share2,
+  Check,
 } from "lucide-react";
 import { cn, fmtScore } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
@@ -82,8 +84,17 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
   // Compare-set is shared with the detail view via localStorage. When the
   // user clicks "Add to Compare" on any asset, this view re-renders and the
   // newly-added symbol appears in `selected`.
-  const [lsCompareSet] = useLocalStorage<string[]>("compare-set", []);
-  const [manualSelected, setManualSelected] = useState<string[]>([]);
+  const [lsCompareSet, setLsCompareSet] = useLocalStorage<string[]>("compare-set", []);
+  // On first mount, check the URL for ?compare=SYM1,SYM2 (shared deep link).
+  // This runs once; subsequent toggles go through the normal flow.
+  const [manualSelected, setManualSelected] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("compare");
+    if (!raw) return [];
+    const syms = raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+    return syms.slice(0, 5);
+  });
 
   // Fetch the list of available assets from the server-side scan cache.
   // (The client can't read the in-memory cache directly — this endpoint
@@ -106,17 +117,31 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
   // 2. manual picks via the asset picker UI (if ≥ 2)
   // 3. top 3 cached assets by market cap — sensible default so the view is
   //    never empty on first load (after a scan has run)
+  //
+  // `excluded` tracks symbols the user has removed via the X button on
+  // summary cards. It applies to ALL sources so removed symbols stay gone
+  // even when falling back to the top-cached default.
+  const [excluded, setExcluded] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("exclude");
+    if (!raw) return new Set();
+    return new Set(raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean));
+  });
   const topCached = cachedAssets
     .slice()
     .sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0))
-    .slice(0, 3)
-    .map((a) => a.symbol);
-  const selected = lsCompareSet.length >= 2
-    ? lsCompareSet.slice(0, 5)
-    : manualSelected.length >= 2
-      ? manualSelected
+    .map((a) => a.symbol)
+    .filter((s) => !excluded.has(s))
+    .slice(0, 3);
+  const lsFiltered = lsCompareSet.filter((s) => !excluded.has(s));
+  const manualFiltered = manualSelected.filter((s) => !excluded.has(s));
+  const selected = lsFiltered.length >= 2
+    ? lsFiltered.slice(0, 5)
+    : manualFiltered.length >= 2
+      ? manualFiltered
       : topCached;
-  const isUsingLS = lsCompareSet.length >= 2;
+  const isUsingLS = lsFiltered.length >= 2;
 
   const { data, isFetching, isError, refetch } = useQuery<{ comparison: ComparisonResult }>({
     queryKey: ["compare", selected.join(",")],
@@ -152,6 +177,7 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
 
   const clear = () => {
     setManualSelected([]);
+    setExcluded(new Set());
     // Also clear the localStorage compare-set so it doesn't re-populate.
     if (typeof window !== "undefined") {
       try {
@@ -160,6 +186,39 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
       } catch {
         // ignore
       }
+    }
+  };
+
+  // Remove a single symbol from the compare set. Adds it to `excluded` so
+  // it stays removed regardless of which source (LS / manual / default) is
+  // currently active. Also updates LS + manual for consistency.
+  const removeFromCompare = (sym: string) => {
+    setExcluded((prev) => new Set(prev).add(sym));
+    if (lsCompareSet.includes(sym)) {
+      setLsCompareSet((prev) => prev.filter((s) => s !== sym));
+    }
+    if (manualSelected.includes(sym)) {
+      setManualSelected((prev) => prev.filter((s) => s !== sym));
+    }
+  };
+
+  // Share the current comparison as a URL deep link. Copies to clipboard
+  // and shows a toast. The URL uses ?compare=SYM1,SYM2,... so it can be
+  // parsed on load to pre-seed the selection.
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareCompare = async () => {
+    if (typeof window === "undefined" || selected.length < 2) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("compare", selected.join(","));
+    url.hash = ""; // clean fragment
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setShareCopied(true);
+      toast.success(t("compare.shareCopied"));
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // Fallback: select the URL in the address bar
+      toast.error(t("compare.shareCompare"));
     }
   };
 
@@ -330,17 +389,29 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
                 <div
                   key={sym}
                   className={cn(
-                    "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4",
+                    "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 group",
                     palette,
                     isOverall && "ring-2 ring-primary/50",
                   )}
                 >
+                  {/* Remove-from-compare button (top-end corner) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromCompare(sym);
+                    }}
+                    className="absolute top-1.5 end-1.5 z-20 inline-flex h-6 w-6 items-center justify-center rounded-md bg-background/60 hover:bg-background/90 text-muted-foreground hover:text-foreground transition-colors backdrop-blur-sm border border-border/40"
+                    title={t("compare.removeAsset", { symbol: sym })}
+                    aria-label={t("compare.removeAsset", { symbol: sym })}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                   {isOverall && (
-                    <div className="absolute top-2 end-2">
+                    <div className="absolute top-2 start-2">
                       <Crown className="h-4 w-4 text-yellow-400" />
                     </div>
                   )}
-                  <div className="text-xs uppercase tracking-wide opacity-80">
+                  <div className="text-xs uppercase tracking-wide opacity-80 pe-7">
                     {sym}
                   </div>
                   <div className="mt-1 text-2xl font-bold tabular-nums">
@@ -447,11 +518,30 @@ export function ComparisonView({ onGoToDiscovery }: { onGoToDiscovery?: () => vo
             </CardContent>
           </Card>
 
-          {/* Refresh */}
-          <div className="flex justify-center">
+          {/* Actions: Refresh + Share */}
+          <div className="flex flex-wrap justify-center gap-2">
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
               <GitCompare className="h-4 w-4" />
               {t("compare.runCompare")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={shareCompare}
+              disabled={selected.length < 2}
+              className="gap-2"
+            >
+              {shareCopied ? (
+                <>
+                  <Check className="h-4 w-4 text-emerald-500" />
+                  {t("compare.shareCopied")}
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-4 w-4" />
+                  {t("compare.shareCompare")}
+                </>
+              )}
             </Button>
           </div>
         </div>

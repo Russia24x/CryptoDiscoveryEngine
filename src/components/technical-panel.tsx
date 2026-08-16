@@ -12,6 +12,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
   Activity,
   TrendingUp,
@@ -21,6 +22,8 @@ import {
   AlertTriangle,
   Target,
   BarChart3,
+  RotateCw,
+  CandlestickChart,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 
@@ -91,7 +94,7 @@ const SIGNAL_COLORS: Record<string, string> = {
 
 export function TechnicalPanel({ symbol }: { symbol: string }) {
   const t = useTranslations();
-  const { data, isLoading, isError, error } = useQuery<{
+  const { data, isLoading, isError, error, refetch } = useQuery<{
     analysis?: TechnicalAnalysis;
     error?: string;
     message?: string;
@@ -101,22 +104,22 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
       const r = await fetch(`/api/technical/${symbol}?interval=1d&limit=365`);
       const json = await r.json();
       if (!r.ok) {
-        // Attach status so retry predicate can short-circuit 404s.
+        // Attach status so the error handler can distinguish 404/422.
         const e = new Error(json.message || json.error || "failed") as Error & { status?: number };
         e.status = r.status;
         throw e;
       }
       return json;
     },
-    // Don't retry 404/422 responses (asset not on Binance, or insufficient
-    // data). Retrying them caused duplicate 404s in the network log and
-    // delayed the error-state render by ~1s per retry.
-    retry: (err: unknown) => {
-      const status = (err as { status?: number })?.status;
-      if (status === 404 || status === 422) return false;
-      return true;
-    },
-    retryDelay: 0,
+    // CRITICAL: retry: false for ALL errors. The previous retry function
+    // returned `true` for non-404 errors, which in react-query v5 means
+    // "retry indefinitely" — there's no implicit maxRetries cap when retry
+    // is a function. This caused an infinite refetch loop (~8 req/s) for
+    // any asset that returned a non-404 error (e.g. network blips, 500s).
+    // 404s (asset not on Binance) are the common case and should never retry.
+    // 500s (Binance API down) should also not retry-spam.
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 min — don't refetch on re-mount
   });
 
   if (isLoading) {
@@ -141,9 +144,11 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
       ? error.message
       : typeof error === "string" ? error : "";
     const errStatus = (error as { status?: number })?.status;
-    if (errStatus === 404 || errStr.includes("not listed on Binance") || errStr.includes("not_on_binance")) {
+    const isNotOnBinance = errStatus === 404 || errStr.includes("not listed on Binance") || errStr.includes("not_on_binance");
+    const isInsufficient = errStr.includes("Not enough") || errStr.includes("insufficient");
+    if (isNotOnBinance) {
       errorMsg = t("technical.notOnBinance", { symbol });
-    } else if (errStr.includes("Not enough") || errStr.includes("insufficient")) {
+    } else if (isInsufficient) {
       errorMsg = t("technical.insufficientData");
     } else if (errStr && errStr !== "failed") {
       errorMsg = errStr;
@@ -155,13 +160,26 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
             <Activity className="h-4 w-4 text-primary" />
             {t("technical.title")}
           </CardTitle>
+          <CardDescription>{t("technical.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
+            {/* Only show retry for non-404 errors (404 = asset not on Binance, retrying won't help) */}
+            {!isNotOnBinance && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-7 text-xs"
+                onClick={() => refetch()}
+              >
+                <RotateCw className="h-3 w-3" />
+                {t("discovery.retry")}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
