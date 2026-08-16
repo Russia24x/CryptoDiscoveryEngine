@@ -54,6 +54,14 @@ interface CoinInfo {
   openSource: boolean | null;
   parent: string | null;
   whitepaper: string | null;
+  // Engine scores (from scan cache, passed by parent or fetched separately)
+  iaScores?: {
+    iaRaw: number;
+    confidence: number;
+    iaEffective: number;
+    regime: number;
+    decision: string;
+  } | null;
 }
 
 function SocialIcon({ label }: { label: string }) {
@@ -68,7 +76,7 @@ function changeIcon(v: number) {
   return <Minus className="h-3 w-3 text-muted-foreground" />;
 }
 
-export function CoinInfoPanel({ symbol }: { symbol: string }) {
+export function CoinInfoPanel({ symbol, iaScores }: { symbol: string; iaScores?: CoinInfo["iaScores"] }) {
   const t = useTranslations();
   const { data, isLoading } = useQuery<CoinInfo>({
     queryKey: ["coin-info", symbol],
@@ -128,7 +136,7 @@ export function CoinInfoPanel({ symbol }: { symbol: string }) {
               )}
               {data.openSource !== null && (
                 <Badge variant="secondary" className="text-[10px]">
-                  {data.openSource ? "Open Source" : "Closed Source"}
+                  {data.openSource ? t("coinInfo.openSource") : t("coinInfo.closedSource")}
                 </Badge>
               )}
             </div>
@@ -143,6 +151,28 @@ export function CoinInfoPanel({ symbol }: { symbol: string }) {
             )}
           </div>
         </div>
+
+        {/* IA Engine Scores (merged from old title block) */}
+        {iaScores && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5">
+              <div className="text-[10px] uppercase text-muted-foreground">IA Raw</div>
+              <div className="font-mono text-sm font-semibold">{iaScores.iaRaw.toFixed(1)}</div>
+            </div>
+            <div className="rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5">
+              <div className="text-[10px] uppercase text-muted-foreground">C</div>
+              <div className="font-mono text-sm font-semibold">{iaScores.confidence.toFixed(2)}</div>
+            </div>
+            <div className="rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5">
+              <div className="text-[10px] uppercase text-muted-foreground">IA Eff</div>
+              <div className="font-mono text-sm font-semibold">{iaScores.iaEffective.toFixed(1)}</div>
+            </div>
+            <div className="rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5">
+              <div className="text-[10px] uppercase text-muted-foreground">M</div>
+              <div className="font-mono text-sm font-semibold">{iaScores.regime.toFixed(2)}</div>
+            </div>
+          </div>
+        )}
 
         {/* Description */}
         {data.description && (

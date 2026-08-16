@@ -314,6 +314,14 @@
     "maxSupply": "Max Supply",
     "beta": "Beta",
     "events": "Upcoming Events",
-    "viewEvent": "View Event"
+    "viewEvent": "View Event",
+    "openSource": "Open Source",
+    "closedSource": "Closed Source",
+    "ath": "ATH",
+    "atl": "ATL",
+    "athDate": "ATH Date",
+    "atlDate": "ATL Date",
+    "whitepaper": "Whitepaper",
+    "parent": "Parent Protocol"
   }
 }

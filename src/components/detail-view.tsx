@@ -87,35 +87,7 @@ export function DetailView({
         <DecisionBadge decision={result.decision} />
       </div>
 
-      {/* Title block */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
-        <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-          <div className="flex items-center gap-4">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 border border-primary/30 text-primary text-lg font-bold glow-primary">
-              {row.symbol.slice(0, 3)}
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{row.symbol}</h1>
-              <p className="text-sm text-muted-foreground">{row.name}</p>
-              <div className="mt-1 flex items-center gap-2">
-                <Badge variant="outline" className="text-[11px]">
-                  {data?.input.category ?? "—"}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {data?.input.accrualKind}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <KV label={t("discovery.colIARaw")} value={fmtScore(result.iaRaw)} />
-            <KV label="C" value={result.confidence.toFixed(2)} />
-            <KV label={t("discovery.colIAEff")} value={fmtScore(result.iaEffective)} />
-            <KV label="M" value={result.regime.toFixed(2)} />
-          </div>
-        </div>
-      </div>
+      {/* Title block — REMOVED, merged into CoinInfoPanel */}
 
       {isError && !isLoading && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
@@ -132,8 +104,14 @@ export function DetailView({
         </div>
       ) : (
         <>
-          {/* Asset Overview — FIRST (image, price, social, description, external links) */}
-          <CoinInfoPanel symbol={row.symbol} />
+          {/* Asset Overview — merged title + overview (image, price, IA scores, social, links) */}
+          <CoinInfoPanel symbol={row.symbol} iaScores={{
+            iaRaw: result.iaRaw,
+            confidence: result.confidence,
+            iaEffective: result.iaEffective,
+            regime: result.regime,
+            decision: result.decision,
+          }} />
 
           {/* Four-tier ranking */}
           <Card>
