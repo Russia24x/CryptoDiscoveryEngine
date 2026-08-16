@@ -87,7 +87,10 @@
     "sparklineEmpty": "No history yet",
     "scoreHigh": "High",
     "scoreMed": "Medium",
-    "scoreLow": "Low"
+    "scoreLow": "Low",
+    "kbdHint": "Use arrow keys to navigate, Enter to open",
+    "cmdkPlaceholder": "Search asset or open view…",
+    "cmdkHint": "Press Cmd+K or Ctrl+K for quick search"
   },
   "decision": {
     "BUY": "BUY",

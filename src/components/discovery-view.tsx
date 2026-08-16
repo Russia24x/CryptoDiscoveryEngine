@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -82,6 +82,10 @@ export function DiscoveryView({
   const [gateFilter, setGateFilter] = useState<GateFilter>("all");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Keyboard navigation: tracks which row is "focused" via arrow keys.
+  // -1 = no keyboard focus. Enter opens the detail view for the focused row.
+  const [kbdIdx, setKbdIdx] = useState<number>(-1);
+  const tableRef = useRef<HTMLTableElement | null>(null);
 
   const { data, isLoading, isFetching, isError, refetch, dataUpdatedAt } = useQuery<ScanResp>({
     queryKey: ["scan"],
@@ -204,6 +208,54 @@ export function DiscoveryView({
         second: "2-digit",
       })
     : null;
+
+  // Keyboard navigation handler: ArrowDown/ArrowUp moves focus between rows,
+  // Enter opens the detail view, Escape clears focus.
+  // Only active when the table is in the viewport (avoids hijacking keys
+  // when the user is typing in the search box).
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't interfere with form inputs
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setKbdIdx((prev) => {
+        const next = prev < 0 ? 0 : Math.min(prev + 1, filteredRows.length - 1);
+        // Scroll the focused row into view
+        requestAnimationFrame(() => {
+          const row = tableRef.current?.querySelector(`tbody tr:nth-child(${next + 1})`);
+          row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+        return next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setKbdIdx((prev) => {
+        const next = prev <= 0 ? 0 : prev - 1;
+        requestAnimationFrame(() => {
+          const row = tableRef.current?.querySelector(`tbody tr:nth-child(${next + 1})`);
+          row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+        return next;
+      });
+    } else if (e.key === "Enter" && kbdIdx >= 0 && kbdIdx < filteredRows.length) {
+      e.preventDefault();
+      onSelect(filteredRows[kbdIdx]);
+    } else if (e.key === "Escape") {
+      setKbdIdx(-1);
+    }
+  }, [filteredRows, kbdIdx, onSelect]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Clamp keyboard index when filteredRows changes (avoids out-of-bounds
+  // when filters reduce the result set). Derived, not effect-based.
+  const safeKbdIdx = kbdIdx >= filteredRows.length ? -1 : kbdIdx;
 
   return (
     <div className="space-y-5">
@@ -439,15 +491,18 @@ export function DiscoveryView({
                 <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
                 {t("discovery.colSymbol")}
               </CardTitle>
-              <CardDescription className="mt-1">
-                {t("discovery.clickHint")}
+              <CardDescription className="mt-1 flex items-center gap-2 flex-wrap">
+                <span>{t("discovery.clickHint")}</span>
+                <kbd className="inline-flex items-center gap-0.5 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {t("discovery.kbdHint")}
+                </kbd>
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto scroll-thin max-h-[70vh]">
-            <table className="w-full text-sm">
+            <table ref={tableRef} className="w-full text-sm">
               <caption className="sr-only">
                 {t("discovery.title")} — {t("discovery.subtitle")}
               </caption>
@@ -481,14 +536,18 @@ export function DiscoveryView({
                   filteredRows.map((r, idx) => {
                     const passed = r.result.gate.passed;
                     const trend = trendBySymbol[r.symbol] ?? [];
+                    const isKbdFocused = safeKbdIdx === idx;
                     return (
                       <tr
                         key={r.symbol}
                         onClick={() => onSelect(r)}
+                        tabIndex={0}
                         className={cn(
-                          "border-b border-border/30 last:border-0 cursor-pointer transition-all group",
+                          "border-b border-border/30 last:border-0 cursor-pointer transition-all group outline-none",
                           idx % 2 === 1 ? "bg-foreground/[0.06]" : "",
-                          "hover:bg-primary/10 hover:shadow-md",
+                          isKbdFocused
+                            ? "bg-primary/15 ring-1 ring-inset ring-primary/40 shadow-sm"
+                            : "hover:bg-primary/10 hover:shadow-md",
                         )}
                       >
                         <td className="py-3.5 px-2 text-muted-foreground font-mono text-xs hidden sm:table-cell">

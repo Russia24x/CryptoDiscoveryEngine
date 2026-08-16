@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { Button } from "@/components/ui/button";
-import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper } from "lucide-react";
+import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper, Command } from "lucide-react";
 import { cn } from "@/lib/format";
 import type { View } from "./app-shell";
 
@@ -18,9 +18,11 @@ const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
 export function AppHeader({
   view,
   setView,
+  onOpenCommand,
 }: {
   view: View;
   setView: (v: View) => void;
+  onOpenCommand?: () => void;
 }) {
   const t = useTranslations();
 
@@ -65,6 +67,17 @@ export function AppHeader({
               </button>
             ))}
             <div className="mx-1 h-5 w-px bg-border/40" />
+            {/* Command palette trigger — shows the Cmd+K shortcut */}
+            <button
+              onClick={() => onOpenCommand?.()}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+              title={t("discovery.cmdkHint")}
+            >
+              <Command className="h-3.5 w-3.5" />
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-border/60 bg-muted/40 px-1 py-0.5 text-[9px] font-mono">
+                ⌘K
+              </kbd>
+            </button>
             <LanguageToggle />
             <ThemeToggle />
           </nav>

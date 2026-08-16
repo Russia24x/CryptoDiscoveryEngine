@@ -87,7 +87,10 @@
     "sparklineEmpty": "تاریخچه‌ای نیست",
     "scoreHigh": "بالا",
     "scoreMed": "متوسط",
-    "scoreLow": "پایین"
+    "scoreLow": "پایین",
+    "kbdHint": "از کلیدهای جهتی برای پیمایش و Enter برای باز کردن استفاده کن",
+    "cmdkPlaceholder": "جستجوی دارایی یا باز کردن نما…",
+    "cmdkHint": "برای جستجوی سریع Cmd+K یا Ctrl+K را بزن"
   },
   "decision": {
     "BUY": "خرید",

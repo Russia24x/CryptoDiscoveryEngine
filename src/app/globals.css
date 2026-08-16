@@ -221,3 +221,19 @@
     transform: translateY(-2px);
   }
 }
+
+/* Accessibility: respect prefers-reduced-motion.
+   Disables all CSS animations and transitions for users who prefer
+   reduced motion (vestibular disorders, motion sensitivity, etc.).
+   Tailwind's animate-pulse, animate-ping, animate-spin, animate-bounce
+   are also covered by this block via the universal selector. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
