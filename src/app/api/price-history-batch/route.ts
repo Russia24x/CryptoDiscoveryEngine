@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getHistoricalOHLCV } from "@/providers/coinpaprika";
 import { getCoingeckoHistorical } from "@/providers/coingecko";
+import { getBinanceHistorical } from "@/providers/binance";
 import { getCached, setCached, priceCacheKey } from "@/lib/price-cache";
 
 export const runtime = "nodejs";
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Fetch only uncached symbols. Provider chain: CoinPaprika → CoinGecko.
+  // Fetch only uncached symbols. Provider chain: CoinPaprika → CoinGecko → Binance.
   if (toFetch.length > 0) {
     const results = await Promise.all(
       toFetch.map(async (sym) => {
@@ -69,9 +70,13 @@ export async function POST(req: Request) {
           if (candles.length >= 2) {
             closes = candles.map((c) => c.price);
           } else {
-            // CoinPaprika returned no data (rate-limited or not indexed).
-            // Fall back to CoinGecko.
+            // CoinPaprika returned no data — fall back to CoinGecko.
             closes = await getCoingeckoHistorical(sym, days, ctx);
+          }
+
+          if (closes.length < 2) {
+            // CoinGecko also failed — final fallback: Binance (Binance-listed only).
+            closes = await getBinanceHistorical(sym, days, ctx);
           }
 
           if (closes.length < 2) {

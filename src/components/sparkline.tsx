@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/format";
 
 interface SparklineProps {
@@ -23,7 +23,8 @@ interface SparklineProps {
  * the value range. If ≤1 point, renders a flat baseline.
  *
  * When `interactive` is true, hovering over the sparkline shows a tooltip
- * with the value at the hovered x position.
+ * with the value at the hovered x position. Keyboard users can focus the
+ * sparkline (tabIndex=0) and use Arrow Left/Right to move between points.
  */
 export function Sparkline({
   values,
@@ -56,6 +57,29 @@ export function Sparkline({
   );
 
   const onLeave = useCallback(() => setHoverIdx(null), []);
+
+  // Keyboard navigation: Arrow Left/Right moves between points.
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<SVGSVGElement>) => {
+      if (!interactive || values.length < 2) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setHoverIdx((prev) => {
+          const cur = prev ?? values.length;
+          return Math.max(0, cur - 1);
+        });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setHoverIdx((prev) => {
+          const cur = prev ?? -1;
+          return Math.min(values.length - 1, cur + 1);
+        });
+      } else if (e.key === "Escape" || e.key === "Tab") {
+        setHoverIdx(null);
+      }
+    },
+    [interactive, values.length],
+  );
 
   if (!values.length) {
     return (
@@ -100,8 +124,12 @@ export function Sparkline({
         role={interactive ? "img" : undefined}
         aria-label={interactive ? `Sparkline with ${values.length} points, range ${formatValue(min)} to ${formatValue(max)}` : undefined}
         title={title}
+        tabIndex={interactive ? 0 : undefined}
         onMouseMove={interactive ? onMove : undefined}
         onMouseLeave={interactive ? onLeave : undefined}
+        onKeyDown={interactive ? onKeyDown : undefined}
+        onFocus={interactive ? () => setHoverIdx(0) : undefined}
+        onBlur={interactive ? onLeave : undefined}
       >
         <polyline
           points={ptsStr}

@@ -154,3 +154,47 @@ export const binanceProvider: DataProvider = {
     };
   },
 };
+
+/**
+ * Fetch historical daily closes from Binance klines API.
+ *
+ * Binance rate limit: 1200 weight/min. Each /klines call costs 2 weight.
+ * This is 600x higher than CoinPaprika's 60 req/hour — effectively unlimited
+ * for our use case.
+ *
+ * Used as the FINAL fallback in the provider chain:
+ * CoinPaprika → CoinGecko → Binance (for Binance-listed assets only).
+ *
+ * Returns an array of close prices, oldest→newest. Empty array on failure
+ * or if the symbol isn't listed on Binance.
+ */
+export async function getBinanceHistorical(
+  symbol: string,
+  days: number,
+  ctx: { fetch?: typeof fetch } = {},
+): Promise<number[]> {
+  const sym = symbol.toUpperCase();
+  const pair = `${sym}USDT`;
+
+  // Binance klines API: /api/v3/klines?symbol=BTCUSDT&interval=1d&limit=7
+  const limit = Math.min(Math.max(days, 1), 365);
+  const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&limit=${limit}`;
+
+  try {
+    const f = ctx.fetch ?? fetch;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const res = await f(url, { signal: ctrl.signal });
+      if (!res.ok) return [];
+      const raw = (await res.json()) as unknown[][];
+      // klines format: [time, open, high, low, close, volume, ...]
+      // Index 4 = close price (string)
+      return raw.map((k) => parseFloat(k[4] as string)).filter((p) => !isNaN(p) && p > 0);
+    } finally {
+      clearTimeout(t);
+    }
+  } catch {
+    return [];
+  }
+}

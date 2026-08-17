@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,9 +31,11 @@ import {
   Compass,
   X,
   ArrowUpDown,
+  Download,
 } from "lucide-react";
 import { cn, fmtUsd, fmtScore } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
+import { exportWatchlistCSV, exportWatchlistJSON } from "@/lib/export";
 import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
 
@@ -74,7 +78,7 @@ export function WatchlistView({
 }) {
   const t = useTranslations();
   const [watchlist, setWatchlist] = useLocalStorage<string[]>("watchlist", []);
-  const [sortKey, setSortKey] = useState<SortKey>("added");
+  const [sortKey, setSortKey] = useLocalStorage<SortKey>("watchlist-sort", "added");
 
   // Fetch scan data to get IA scores + decisions for watchlist assets
   const { data: scanData } = useQuery<ScanResp>({
@@ -151,6 +155,33 @@ export function WatchlistView({
   const removeFromWatchlist = (sym: string) => {
     setWatchlist((prev) => prev.filter((s) => s !== sym));
   };
+
+  // Smart alerts: track price changes for watchlist assets and notify
+  // when an asset's 7d change% exceeds ±5%. Only fires once per symbol
+  // per session (tracked via a ref to avoid setState-in-effect).
+  const alertedRefs = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const asset of assets) {
+      const change = asset.changePct;
+      if (change === undefined) continue;
+      const absChange = Math.abs(change);
+      const key = asset.symbol;
+      // Only alert if change > 5% AND we haven't already alerted for this symbol
+      if (absChange >= 5 && !alertedRefs.current.has(key)) {
+        alertedRefs.current.add(key);
+        const isUp = change >= 0;
+        toast(
+          `${asset.symbol} ${isUp ? "📈" : "📉"} ${change.toFixed(1)}% در ۷ روز`,
+          {
+            description: isUp
+              ? t("watchlist.alertUp", { symbol: asset.symbol, pct: change.toFixed(1) })
+              : t("watchlist.alertDown", { symbol: asset.symbol, pct: Math.abs(change).toFixed(1) }),
+            icon: isUp ? <TrendingUp className="h-4 w-4 text-emerald-500" /> : <TrendingDown className="h-4 w-4 text-red-500" />,
+          }
+        );
+      }
+    }
+  }, [assets, t]);
 
   if (watchlist.length === 0) {
     return (
@@ -235,6 +266,46 @@ export function WatchlistView({
                   <SelectItem value="decision">{t("watchlist.sortDecision")}</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  const exportRows = assets.map((a) => ({
+                    symbol: a.symbol,
+                    name: a.name,
+                    category: a.category ?? "",
+                    iaFinal: a.iaFinal?.toFixed(1) ?? "",
+                    decision: a.decision ?? "",
+                    changePct7d: a.changePct?.toFixed(1) ?? "",
+                  }));
+                  exportWatchlistCSV(exportRows);
+                }}
+                title={t("watchlist.exportCSV")}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">CSV</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  const exportRows = assets.map((a) => ({
+                    symbol: a.symbol,
+                    name: a.name,
+                    category: a.category ?? "",
+                    iaFinal: a.iaFinal?.toFixed(1) ?? "",
+                    decision: a.decision ?? "",
+                    changePct7d: a.changePct?.toFixed(1) ?? "",
+                  }));
+                  exportWatchlistJSON(exportRows);
+                }}
+                title={t("watchlist.exportJSON")}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">JSON</span>
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

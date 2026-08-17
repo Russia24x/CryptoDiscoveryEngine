@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper, Command, Star } from "lucide-react";
 import { cn } from "@/lib/format";
 import type { View } from "./app-shell";
+import { ProviderStatusBadge } from "./provider-status-badge";
 
 const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
   { key: "discovery", icon: Compass, labelKey: "nav.discovery" },
@@ -68,6 +69,7 @@ export function AppHeader({
               </button>
             ))}
             <div className="mx-1 h-5 w-px bg-border/40" />
+            <ProviderStatusBadge />
             {/* Command palette trigger — shows the Cmd+K shortcut */}
             <button
               onClick={() => onOpenCommand?.()}

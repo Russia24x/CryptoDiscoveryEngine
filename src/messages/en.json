@@ -211,7 +211,15 @@
     "sortName": "Name (A-Z)",
     "sortIa": "IA Score",
     "sortChange": "Biggest change",
-    "sortDecision": "Decision"
+    "sortDecision": "Decision",
+    "alertUp": "{symbol} is up {pct}% in the last 7 days.",
+    "alertDown": "{symbol} is down {pct}% in the last 7 days.",
+    "exportCSV": "Export CSV",
+    "exportJSON": "Export JSON"
+  },
+  "status": {
+    "rateLimited": "Provider rate-limited",
+    "rateLimitedHint": "Some data providers are rate-limited: {providers}. Data may be incomplete."
   },
   "footer": {
     "rights": "Crypto Investment Decision Engine",

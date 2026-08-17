@@ -211,7 +211,15 @@
     "sortName": "نام (A-Z)",
     "sortIa": "امتیاز IA",
     "sortChange": "بیشترین تغییر",
-    "sortDecision": "تصمیم"
+    "sortDecision": "تصمیم",
+    "alertUp": "{symbol} در ۷ روز گذشته {pct}٪ رشد داشته است.",
+    "alertDown": "{symbol} در ۷ روز گذشته {pct}٪ افت داشته است.",
+    "exportCSV": "خروجی CSV",
+    "exportJSON": "خروجی JSON"
+  },
+  "status": {
+    "rateLimited": "ارائه‌دهنده محدود شده",
+    "rateLimitedHint": "برخی ارائه‌دهندگان داده محدود شده‌اند: {providers}. داده‌ها ممکن است ناقص باشند."
   },
   "footer": {
     "rights": "موتور تصمیم‌گیری سرمایه‌گذاری کریپتو",
