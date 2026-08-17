@@ -115,9 +115,9 @@ export type Decision = "BUY" | "WATCH" | "INVESTIGATE" | "AVOID" | "REJECT";
 
 export interface DecisionExplanation {
   decision: Decision;
-  forPoints: string[];
-  againstPoints: string[];
-  whatChanges: string[];
+  forPoints: { key: string; value?: string }[];
+  againstPoints: { key: string; value?: string }[];
+  whatChanges: { key: string }[];
   statusLine: string;
 }
 
@@ -339,33 +339,33 @@ function decide(
 // ─── Explanation (plain-language, explainable) ────────────────────
 
 function explain(i: EngineInputs, r: EngineResult): DecisionExplanation {
-  const forPoints: string[] = [];
-  const againstPoints: string[] = [];
-  const whatChanges: string[] = [];
+  const forPoints: { key: string; value?: string }[] = [];
+  const againstPoints: { key: string; value?: string }[] = [];
+  const whatChanges: { key: string }[] = [];
 
   const { components: c, confidence: conf, iaRaw, iaFinal } = r;
 
-  // For
-  if (c.vae >= 40) forPoints.push(`VAE ${c.vae.toFixed(1)}% — strong value capture`);
-  if (c.delta >= 0.5) forPoints.push(`Distribution rate ${(c.delta * 100).toFixed(0)}% — tokenholders capture well`);
-  if (c.pq >= 0.7) forPoints.push(`Project quality ${(c.pq * 100).toFixed(0)}/100 — strong fundamentals`);
-  if (c.sar >= 0.5) forPoints.push(`SAR ${c.sar.toFixed(2)} — supply absorption healthy`);
-  if (c.fdr <= 0.15) forPoints.push(`FDR ${(c.fdr * 100).toFixed(0)}% — low future dilution`);
+  // For — structured keys, frontend translates to user's language
+  if (c.vae >= 40) forPoints.push({ key: "vae_strong", value: c.vae.toFixed(1) + "%" });
+  if (c.delta >= 0.5) forPoints.push({ key: "delta_good", value: (c.delta * 100).toFixed(0) + "%" });
+  if (c.pq >= 0.7) forPoints.push({ key: "pq_strong", value: (c.pq * 100).toFixed(0) });
+  if (c.sar >= 0.5) forPoints.push({ key: "sar_healthy", value: c.sar.toFixed(2) });
+  if (c.fdr <= 0.15) forPoints.push({ key: "fdr_low", value: (c.fdr * 100).toFixed(0) + "%" });
 
   // Against
-  if (c.vae < 25) againstPoints.push(`VAE ${c.vae.toFixed(1)}% — weak value capture`);
-  if (c.fdr >= 0.25) againstPoints.push(`FDR ${(c.fdr * 100).toFixed(0)}% — material dilution risk`);
-  if (c.r >= 0.6) againstPoints.push(`Risk score ${(c.r * 100).toFixed(0)}/100 — elevated`);
-  if (c.delta < 0.2) againstPoints.push(`Distribution rate ${(c.delta * 100).toFixed(0)}% — tokenholders capture little`);
+  if (c.vae < 25) againstPoints.push({ key: "vae_weak", value: c.vae.toFixed(1) + "%" });
+  if (c.fdr >= 0.25) againstPoints.push({ key: "fdr_high", value: (c.fdr * 100).toFixed(0) + "%" });
+  if (c.r >= 0.6) againstPoints.push({ key: "risk_elevated", value: (c.r * 100).toFixed(0) });
+  if (c.delta < 0.2) againstPoints.push({ key: "delta_low", value: (c.delta * 100).toFixed(0) + "%" });
   if (i.unlock12m > 0 && i.float > 0 && i.unlock12m / i.float >= 0.15)
-    againstPoints.push(`${((i.unlock12m / i.float) * 100).toFixed(0)}% unlock next 12m`);
+    againstPoints.push({ key: "unlock_high", value: ((i.unlock12m / i.float) * 100).toFixed(0) + "%" });
 
   // What changes the decision
-  whatChanges.push("→ unlock acceleration beyond current schedule");
-  whatChanges.push("→ revenue (PR) drawdown > 30% / 90d");
-  whatChanges.push("→ TVL drawdown > 25% / 90d");
+  whatChanges.push({ key: "change_unlock" });
+  whatChanges.push({ key: "change_revenue_drawdown" });
+  whatChanges.push({ key: "change_tvl_drawdown" });
   if (i.accrualKind === "buyback_burn")
-    whatChanges.push("→ SAR drops below 0.10 (buyback absorption fails)");
+    whatChanges.push({ key: "change_sar_drop" });
 
   const statusLine = `${i.symbol}  IA_raw=${iaRaw.toFixed(1)}  C=${conf.toFixed(2)}  Eff=${r.iaEffective.toFixed(1)}  M=${r.regime.toFixed(2)}  Final=${iaFinal.toFixed(1)}`;
 

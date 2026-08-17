@@ -147,7 +147,21 @@
     "evidenceHint": "هر معیار دارای منبع، زمان، تازگی و درجه اطمینان است.",
     "dataError": "بارگذاری جزئیات ناموفق بود — فقط خلاصه اسکن نمایش داده می‌شود.",
     "addToCompare": "افزودن به مقایسه",
-    "addedToCompare": "به مقایسه افزوده شد"
+    "addedToCompare": "به مقایسه افزوده شد",
+    "exp_vae_strong": "بازدهی تحقق ارزش {value} — جذب ارزش قوی",
+    "exp_delta_good": "نرخ توزیع {value} — توکن‌داران سهم خوبی می‌برند",
+    "exp_pq_strong": "کیفیت پروژه {value}/۱۰۰ — بنیادهای قوی",
+    "exp_sar_healthy": "SAR {value} — جذب عرضه سالم",
+    "exp_fdr_low": "FDR {value} — رقیق‌شدن آینده کم",
+    "exp_vae_weak": "بازدهی تحقق ارزش {value} — جذب ارزش ضعیف",
+    "exp_fdr_high": "FDR {value} — ریسک رقیق‌شدن قابل‌توجه",
+    "exp_risk_elevated": "امتیاز ریسک {value}/۱۰۰ — بالا",
+    "exp_delta_low": "نرخ توزیع {value} — توکن‌داران سهم کمی می‌برند",
+    "exp_unlock_high": "{value}٪ آزادسازی در ۱۲ ماه آینده",
+    "exp_change_unlock": "→ تسریع آزادسازی فراتر از برنامه فعلی",
+    "exp_change_revenue_drawdown": "→ افت درآمد (PR) بیش از ۳۰٪ در ۹۰ روز",
+    "exp_change_tvl_drawdown": "→ افت TVL بیش از ۲۵٪ در ۹۰ روز",
+    "exp_change_sar_drop": "→ افت SAR به زیر ۰.۱۰ (شکست جذب بازخرید)"
   },
   "settings": {
     "title": "ارائه‌دهنده‌های داده",

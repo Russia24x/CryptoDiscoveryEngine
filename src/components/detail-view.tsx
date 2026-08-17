@@ -379,10 +379,10 @@ export function DetailView({
                   </div>
                   <ul className="space-y-1.5">
                     {result.explanation.forPoints.length ? (
-                      result.explanation.forPoints.map((p) => (
-                        <li key={p} className="flex items-start gap-2 text-sm">
+                      result.explanation.forPoints.map((p, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
                           <span className="text-emerald-500 mt-0.5">+</span>
-                          <span>{p}</span>
+                          <span>{t(`detail.exp_${p.key}`, { value: p.value ?? "" })}</span>
                         </li>
                       ))
                     ) : (
@@ -397,10 +397,10 @@ export function DetailView({
                   </div>
                   <ul className="space-y-1.5">
                     {result.explanation.againstPoints.length ? (
-                      result.explanation.againstPoints.map((p) => (
-                        <li key={p} className="flex items-start gap-2 text-sm">
+                      result.explanation.againstPoints.map((p, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
                           <span className="text-red-500 mt-0.5">−</span>
-                          <span>{p}</span>
+                          <span>{t(`detail.exp_${p.key}`, { value: p.value ?? "" })}</span>
                         </li>
                       ))
                     ) : (
@@ -412,9 +412,9 @@ export function DetailView({
               <div className="space-y-2 pt-3 border-t">
                 <div className="text-sm font-semibold">{t("detail.whatChanges")}</div>
                 <ul className="space-y-1">
-                  {result.explanation.whatChanges.map((p) => (
-                    <li key={p} className="text-xs text-muted-foreground font-mono">
-                      {p}
+                  {result.explanation.whatChanges.map((p, idx) => (
+                    <li key={idx} className="text-xs text-muted-foreground">
+                      {t(`detail.exp_${p.key}`)}
                     </li>
                   ))}
                 </ul>

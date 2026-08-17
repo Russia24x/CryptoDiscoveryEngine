@@ -147,7 +147,21 @@
     "evidenceHint": "Every metric carries a source, timestamp, freshness, confidence and grade.",
     "dataError": "Detail data could not be loaded — showing summary from scan only.",
     "addToCompare": "Add to Compare",
-    "addedToCompare": "Added to Compare"
+    "addedToCompare": "Added to Compare",
+    "exp_vae_strong": "VAE {value} — strong value capture",
+    "exp_delta_good": "Distribution rate {value} — tokenholders capture well",
+    "exp_pq_strong": "Project quality {value}/100 — strong fundamentals",
+    "exp_sar_healthy": "SAR {value} — supply absorption healthy",
+    "exp_fdr_low": "FDR {value} — low future dilution",
+    "exp_vae_weak": "VAE {value} — weak value capture",
+    "exp_fdr_high": "FDR {value} — material dilution risk",
+    "exp_risk_elevated": "Risk score {value}/100 — elevated",
+    "exp_delta_low": "Distribution rate {value} — tokenholders capture little",
+    "exp_unlock_high": "{value}% unlock next 12 months",
+    "exp_change_unlock": "→ unlock acceleration beyond current schedule",
+    "exp_change_revenue_drawdown": "→ revenue (PR) drawdown > 30% / 90d",
+    "exp_change_tvl_drawdown": "→ TVL drawdown > 25% / 90d",
+    "exp_change_sar_drop": "→ SAR drops below 0.10 (buyback absorption fails)"
   },
   "settings": {
     "title": "Data Providers",
