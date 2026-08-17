@@ -200,6 +200,14 @@
     "watchlistCleared": "Watchlist cleared",
     "compareSetCleared": "Compare set cleared"
   },
+  "watchlist": {
+    "title": "Watchlist",
+    "subtitle": "Your starred assets — price, trend, and engine decision at a glance.",
+    "empty": "Your watchlist is empty",
+    "emptyHint": "To add assets, click the star next to any row in the discovery table.",
+    "goToDiscovery": "Go to Discovery Scanner",
+    "assets": "assets"
+  },
   "footer": {
     "rights": "Crypto Investment Decision Engine",
     "evidenceOverNarrative": "Evidence > Narrative",

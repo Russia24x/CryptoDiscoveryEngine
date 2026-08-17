@@ -4,12 +4,13 @@ import { useTranslations } from "next-intl";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { Button } from "@/components/ui/button";
-import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper, Command } from "lucide-react";
+import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper, Command, Star } from "lucide-react";
 import { cn } from "@/lib/format";
 import type { View } from "./app-shell";
 
 const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
   { key: "discovery", icon: Compass, labelKey: "nav.discovery" },
+  { key: "watchlist", icon: Star, labelKey: "watchlist.title" },
   { key: "compare", icon: GitCompare, labelKey: "compare.title" },
   { key: "feeds", icon: Newspaper, labelKey: "feedsView.feedsTitle" },
   { key: "settings", icon: SettingsIcon, labelKey: "nav.settings" },

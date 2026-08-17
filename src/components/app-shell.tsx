@@ -10,12 +10,13 @@ import { DetailView } from "./detail-view";
 import { ComparisonView } from "./comparison-view";
 import { FeedsView } from "./feeds-view";
 import { SettingsView } from "./settings-view";
+import { WatchlistView } from "./watchlist-view";
 import { CommandPalette } from "./command-palette";
 import type { RankedRow } from "@/engine/ranking";
 import { AnimatePresence, motion } from "framer-motion";
-import { Compass, Settings as SettingsIcon, FileText } from "lucide-react";
+import { Compass, Settings as SettingsIcon, FileText, Star } from "lucide-react";
 
-export type View = "discovery" | "compare" | "feeds" | "settings";
+export type View = "discovery" | "compare" | "feeds" | "settings" | "watchlist";
 
 interface CachedAsset {
   symbol: string;
@@ -144,6 +145,20 @@ export function AppShell() {
                 transition={{ duration: 0.25 }}
               >
                 <SettingsView />
+              </motion.div>
+            )}
+            {view === "watchlist" && (
+              <motion.div
+                key="watchlist"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                <WatchlistView
+                  onSelectAsset={handlePaletteAsset}
+                  onGoToDiscovery={() => setView("discovery")}
+                />
               </motion.div>
             )}
           </AnimatePresence>

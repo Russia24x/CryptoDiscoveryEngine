@@ -18,6 +18,7 @@ import {
   Settings,
   TrendingUp,
   CornerDownLeft,
+  Star,
 } from "lucide-react";
 import type { View } from "./app-shell";
 
@@ -122,6 +123,10 @@ function CommandPaletteInner({
           <CommandItem onSelect={() => onSelectView("discovery")} className="gap-2">
             <Compass className="h-4 w-4 text-primary" />
             <span>{t("nav.discovery")}</span>
+          </CommandItem>
+          <CommandItem onSelect={() => onSelectView("watchlist")} className="gap-2">
+            <Star className="h-4 w-4 text-primary" />
+            <span>{t("watchlist.title")}</span>
           </CommandItem>
           <CommandItem onSelect={() => onSelectView("compare")} className="gap-2">
             <GitCompare className="h-4 w-4 text-primary" />
