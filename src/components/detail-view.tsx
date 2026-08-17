@@ -322,7 +322,7 @@ export function DetailView({
                   <ShieldAlert className="h-4 w-4 text-primary" />
                   {t("detail.gate")}
                 </CardTitle>
-                <CardDescription>Mechanism-aware hard vetoes</CardDescription>
+                <CardDescription>{t("detail.gateDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div
@@ -353,7 +353,7 @@ export function DetailView({
                   </ul>
                 )}
                 <div className="text-[11px] text-muted-foreground leading-relaxed">
-                  SAR gate is conditional — applied only when the token's accrual thesis is Buyback/Burn.
+                  {t("detail.sarGateHint")}
                 </div>
               </CardContent>
             </Card>
@@ -367,7 +367,7 @@ export function DetailView({
                 {t("detail.explanation")}
               </CardTitle>
               <CardDescription>
-                DECISION: <span className="font-bold">{result.decision}</span>
+                {t("detail.decisionLabel")} <span className="font-bold">{result.decision}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
