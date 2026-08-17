@@ -70,12 +70,25 @@ function stripHtml(html: string): string {
   return html
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/<[^>]+>/g, "")
+    // Decode named HTML entities (common + directional/formatting)
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
+    // Directional / formatting entities (Telegram uses &rlm; heavily for RTL text)
+    .replace(/&rlm;/g, "\u200F")   // Right-to-Left Mark
+    .replace(/&lrm;/g, "\u200E")   // Left-to-Right Mark
+    .replace(/&rle;/g, "\u202B")   // Right-to-Left Embedding
+    .replace(/&lre;/g, "\u202A")   // Left-to-Right Embedding
+    .replace(/&rlo;/g, "\u202E")   // Right-to-Left Override
+    .replace(/&lro;/g, "\u202D")   // Left-to-Right Override
+    .replace(/&zwj;/g, "\u200D")   // Zero Width Joiner
+    .replace(/&zwnj;/g, "\u200C")  // Zero Width Non-Joiner
+    // Decode numeric HTML entities (decimal: &#8207; and hex: &#x200F;)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .trim();
 }
 
