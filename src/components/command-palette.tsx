@@ -41,6 +41,10 @@ export function CommandPalette({
   // resetting the query without a setState-in-effect.
   const remountKey = open ? "open" : "closed";
 
+  // Read ?q= URL param for pre-filled search (shared deep links).
+  // Only read once per open — uses a ref-like pattern via useMemo with open dep.
+  const initialQuery = open ? readUrlQueryParam("q") : "";
+
   const handleSelectView = useCallback(
     (view: View) => {
       onNavigate(view);
@@ -63,6 +67,7 @@ export function CommandPalette({
         key={remountKey}
         assets={assets}
         t={t}
+        initialQuery={initialQuery}
         onSelectView={handleSelectView}
         onSelectAsset={handleSelectAsset}
       />
@@ -70,18 +75,27 @@ export function CommandPalette({
   );
 }
 
+/** Safely read a URL query param (SSR-safe). */
+function readUrlQueryParam(name: string): string {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name) ?? "";
+}
+
 function CommandPaletteInner({
   assets,
   t,
+  initialQuery = "",
   onSelectView,
   onSelectAsset,
 }: {
   assets: Array<{ symbol: string; name: string; category?: string }>;
   t: ReturnType<typeof useTranslations>;
+  initialQuery?: string;
   onSelectView: (view: View) => void;
   onSelectAsset: (symbol: string) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
 
   // Filter assets by query (case-insensitive on symbol + name + category)
   const filteredAssets = query.trim()

@@ -42,7 +42,7 @@ import {
   Star,
 } from "lucide-react";
 import type { RankedRow } from "@/engine/ranking";
-import { cn, decisionClass, fmtScore } from "@/lib/format";
+import { cn, decisionClass, fmtScore, fmtUsd } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
 import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
@@ -714,8 +714,10 @@ export function DiscoveryView({
                                 <>
                                   <Sparkline
                                     values={p.closes}
-                                    width={48}
-                                    height={16}
+                                    width={56}
+                                    height={20}
+                                    interactive
+                                    formatValue={(v) => fmtUsd(v)}
                                   />
                                   <span className={cn(
                                     "text-[9px] font-mono font-semibold tabular-nums",
