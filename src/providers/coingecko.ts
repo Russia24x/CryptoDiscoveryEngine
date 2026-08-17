@@ -98,7 +98,13 @@ export const coingeckoProvider: DataProvider = {
 // In-memory cache for CoinGecko coin IDs (symbol → coinId).
 // Avoids repeated /search calls for the same symbol.
 // A null value means "searched but not found" — don't retry.
-const geckoIdCache = new Map<string, string | null>();
+// Entries expire after 1 hour to allow re-discovery of delisted/newly-listed assets.
+interface GeckoIdEntry {
+  coinId: string | null;
+  expiresAt: number; // epoch ms
+}
+const GECKO_ID_TTL_MS = 60 * 60 * 1000; // 1 hour
+const geckoIdCache = new Map<string, GeckoIdEntry>();
 
 export async function getCoingeckoHistorical(
   symbol: string,
@@ -110,10 +116,13 @@ export async function getCoingeckoHistorical(
   // Circuit breaker: skip CoinGecko entirely if recently rate-limited.
   if (isTripped(GECKO_CIRCUIT)) return [];
 
-  // Check ID cache first
-  let coinId = geckoIdCache.get(sym);
-  if (coinId === undefined) {
-    // Not cached — search for the coin ID
+  // Check ID cache first (with TTL expiry)
+  let coinId: string | null | undefined;
+  const cached = geckoIdCache.get(sym);
+  if (cached && Date.now() < cached.expiresAt) {
+    coinId = cached.coinId;
+  } else {
+    // Not cached or expired — search for the coin ID
     // Reset the rate-limit side-channel before the fetch.
     safeJsonFetch.lastRateLimitStatus = null;
 
@@ -127,7 +136,7 @@ export async function getCoingeckoHistorical(
     }
 
     if (!search?.coins?.length) {
-      geckoIdCache.set(sym, null);
+      geckoIdCache.set(sym, { coinId: null, expiresAt: Date.now() + GECKO_ID_TTL_MS });
       return [];
     }
 
@@ -136,14 +145,14 @@ export async function getCoingeckoHistorical(
       (c) => c.symbol.toUpperCase() === sym,
     );
     if (matches.length === 0) {
-      geckoIdCache.set(sym, null);
+      geckoIdCache.set(sym, { coinId: null, expiresAt: Date.now() + GECKO_ID_TTL_MS });
       return [];
     }
 
     // Sort by market cap rank (lower = better, nulls last).
     matches.sort((a, b) => (a.market_cap_rank ?? Infinity) - (b.market_cap_rank ?? Infinity));
     coinId = matches[0].id;
-    geckoIdCache.set(sym, coinId);
+    geckoIdCache.set(sym, { coinId, expiresAt: Date.now() + GECKO_ID_TTL_MS });
   }
 
   // coinId is null if previously searched and not found

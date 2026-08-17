@@ -206,7 +206,12 @@
     "empty": "Your watchlist is empty",
     "emptyHint": "To add assets, click the star next to any row in the discovery table.",
     "goToDiscovery": "Go to Discovery Scanner",
-    "assets": "assets"
+    "assets": "assets",
+    "sortAdded": "Added order",
+    "sortName": "Name (A-Z)",
+    "sortIa": "IA Score",
+    "sortChange": "Biggest change",
+    "sortDecision": "Decision"
   },
   "footer": {
     "rights": "Crypto Investment Decision Engine",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Star,
   TrendingUp,
   TrendingDown,
@@ -20,11 +28,14 @@ import {
   Trash2,
   Compass,
   X,
+  ArrowUpDown,
 } from "lucide-react";
 import { cn, fmtUsd, fmtScore } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
 import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
+
+type SortKey = "added" | "name" | "iaFinal" | "changePct" | "decision";
 
 interface WatchlistAsset {
   symbol: string;
@@ -63,6 +74,7 @@ export function WatchlistView({
 }) {
   const t = useTranslations();
   const [watchlist, setWatchlist] = useLocalStorage<string[]>("watchlist", []);
+  const [sortKey, setSortKey] = useState<SortKey>("added");
 
   // Fetch scan data to get IA scores + decisions for watchlist assets
   const { data: scanData } = useQuery<ScanResp>({
@@ -95,22 +107,46 @@ export function WatchlistView({
     retry: false,
   });
 
-  // Build the watchlist asset list by merging scan + price data
-  const assets: WatchlistAsset[] = watchlist.map((sym) => {
-    const scanRow = scanData?.rows.find(
-      (r) => r.symbol.toUpperCase() === sym.toUpperCase(),
-    );
-    const price = priceData?.sparklines[sym];
-    return {
-      symbol: sym,
-      name: scanRow?.name ?? sym,
-      category: scanRow?.category,
-      iaFinal: scanRow?.result.iaFinal,
-      decision: scanRow?.result.decision,
-      changePct: price?.changePct,
-      closes: price?.closes,
-    };
-  });
+  // Build the watchlist asset list by merging scan + price data, then sort.
+  const assets = useMemo(() => {
+    const raw = watchlist.map((sym) => {
+      const scanRow = scanData?.rows.find(
+        (r) => r.symbol.toUpperCase() === sym.toUpperCase(),
+      );
+      const price = priceData?.sparklines[sym];
+      return {
+        symbol: sym,
+        name: scanRow?.name ?? sym,
+        category: scanRow?.category,
+        iaFinal: scanRow?.result.iaFinal,
+        decision: scanRow?.result.decision,
+        changePct: price?.changePct,
+        closes: price?.closes,
+      };
+    });
+
+    // Sort by the selected key
+    const sorted = [...raw];
+    switch (sortKey) {
+      case "name":
+        sorted.sort((a, b) => a.symbol.localeCompare(b.symbol));
+        break;
+      case "iaFinal":
+        sorted.sort((a, b) => (b.iaFinal ?? 0) - (a.iaFinal ?? 0));
+        break;
+      case "changePct":
+        sorted.sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0));
+        break;
+      case "decision":
+        sorted.sort((a, b) => (a.decision ?? "").localeCompare(b.decision ?? ""));
+        break;
+      case "added":
+      default:
+        // Keep insertion order (watchlist array order)
+        break;
+    }
+    return sorted;
+  }, [watchlist, scanData, priceData, sortKey]);
 
   const removeFromWatchlist = (sym: string) => {
     setWatchlist((prev) => prev.filter((s) => s !== sym));
@@ -185,15 +221,30 @@ export function WatchlistView({
                 {t("watchlist.subtitle")}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setWatchlist([])}
-            >
-              <Trash2 className="h-4 w-4" />
-              {t("settings.clear")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="w-[140px] h-8 text-xs gap-2">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="added">{t("watchlist.sortAdded")}</SelectItem>
+                  <SelectItem value="name">{t("watchlist.sortName")}</SelectItem>
+                  <SelectItem value="iaFinal">{t("watchlist.sortIa")}</SelectItem>
+                  <SelectItem value="changePct">{t("watchlist.sortChange")}</SelectItem>
+                  <SelectItem value="decision">{t("watchlist.sortDecision")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setWatchlist([])}
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("settings.clear")}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
