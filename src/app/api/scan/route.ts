@@ -14,16 +14,6 @@ interface ScanResponse {
   note?: string;
 }
 
-// Deterministic string hash → 32-bit int.
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
 async function runScan(): Promise<ScanResponse> {
   try {
     // Fetch from ALL providers in parallel (on-demand, per click — no auto-refresh).
@@ -102,6 +92,28 @@ async function runScan(): Promise<ScanResponse> {
         const float = p.mc ?? 1;
         const unlock12m = float * 0.05;
         const emission12m = float * 0.02;
+
+        // Derive percentile inputs from REAL market data instead of hardcoded 0.5.
+        // These are rough but data-driven estimates that improve with more data.
+        const hasRealRevenue = pr > 0;
+        const hasRealFees = pc > 0;
+        const hasRealMC = float > 1;
+        const hasRealTVL = (p.tvl ?? 0) > 0;
+        const hasRealPrice = (p.price ?? 0) > 0;
+        const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
+        // Data completeness: 5 data points = 1.0, 0 = 0.2 (minimum)
+        const dataCompleteness = 0.2 + (dataPoints / 5) * 0.8;
+        // Source quality: real revenue/fees from DeFiLlama = high quality
+        const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.4;
+        // Confidence scales with data availability
+        const baseConfidence = 0.5 + (dataPoints / 5) * 0.35; // 0.5 to 0.85
+
+        // Risk inputs derived from data quality:
+        // More data → lower risk (we know what we're investing in)
+        const dataRisk = 1 - dataCompleteness; // 0.2 to 0.8
+        // Market cap → liquidity: bigger MC = lower liquidity risk
+        const marketLiquidityRisk = float > 1e9 ? 0.15 : float > 1e8 ? 0.3 : float > 1e7 ? 0.5 : 0.7;
+
         return {
           symbol: p.symbol,
           name: p.name,
@@ -119,26 +131,29 @@ async function runScan(): Promise<ScanResponse> {
           unlock12m,
           emission12m,
           tokenYield: 0,
-          inflationGrade: 0.6,
-          mcOverTcPercentile: 0.5,
-          mcOverPrPercentile: 0.5,
-          fdvOverTcPercentile: 0.5,
-          revenueGrowth: 0.5,
-          revenueStability: 0.5,
-          revenueDiversification: 0.5,
-          marketPosition: 0.5,
-          userGrowth: 0.5,
-          realYield: 0.01,
+          inflationGrade: hasRealMC ? 0.55 : 0.7,
+          // Derive percentile from MC/TC ratio instead of hardcoded 0.5
+          mcOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, float / (tc * 10))) : 0.5,
+          mcOverPrPercentile: pr > 0 ? Math.min(0.95, Math.max(0.1, float / (pr * 20))) : 0.5,
+          fdvOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, (p.fdv ?? float) / (tc * 10))) : 0.5,
+          // Revenue metrics: real data → higher scores
+          revenueGrowth: hasRealRevenue ? 0.65 : 0.4,
+          revenueStability: hasRealRevenue ? 0.6 : 0.35,
+          revenueDiversification: hasRealFees ? 0.55 : 0.35,
+          marketPosition: hasRealMC ? Math.min(0.9, 0.3 + Math.log10(float) / 20) : 0.4,
+          userGrowth: 0.45,
+          realYield: hasRealRevenue ? Math.min(0.1, pr / (float * 100)) : 0.01,
           buybackActivity: 0.05,
+          // Risk metrics derived from data quality
           revenueConcentration: 0.4,
           insiderConcentration: 0.4,
-          regulatoryRisk: 0.4,
+          regulatoryRisk: (p.category === "RWA" || p.category === "CEX") ? 0.6 : 0.35,
           smartContractRisk: 0.3,
-          marketLiquidityRisk: 0.35,
+          marketLiquidityRisk,
           dependencyRisk: 0.4,
-          dataCompleteness: 0.45,
-          sourceQuality: 0.6,
-          modelStability: 0.55,
+          dataCompleteness,
+          sourceQuality,
+          modelStability: baseConfidence,
           marketRegime: 1.0,
         };
       });
@@ -175,8 +190,7 @@ async function runScan(): Promise<ScanResponse> {
   }
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
+export async function GET() {
   const body = await runScan();
 
   // persist scan record + per-asset ScanRows (best effort, non-blocking).
