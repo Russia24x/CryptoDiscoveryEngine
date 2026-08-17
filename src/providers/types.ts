@@ -36,6 +36,12 @@ export interface ProtocolSummary {
   revenue24h?: number;
   mc?: number;
   fdv?: number;
+  /** Real-time price (only Binance provides this in listProtocols). */
+  price?: number;
+  /** 24h volume in USD. */
+  volume24h?: number;
+  /** 24h price change percentage. */
+  change24h?: number;
 }
 
 export interface ProtocolDetail extends ProtocolSummary {

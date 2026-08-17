@@ -117,6 +117,9 @@ export const binanceProvider: DataProvider = {
           mc: price * parseFloat(t.volume), // rough market cap proxy (price × circulating volume)
           // Note: this isn't true market cap, but Binance doesn't provide it.
           // DeFiLlama/CoinGecko provide better MC data when available.
+          price,
+          volume24h,
+          change24h: parseFloat(t.priceChangePercent),
         });
       }
     }

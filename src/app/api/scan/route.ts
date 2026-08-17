@@ -71,10 +71,16 @@ async function runScan(): Promise<ScanResponse> {
       if (ex) {
         // Binance gives us real price + volume — better than estimates
         if (p.mc) ex.mc = p.mc;
+        if (p.price) ex.price = p.price;
+        if (p.volume24h) ex.volume24h = p.volume24h;
+        if (p.change24h !== undefined) ex.change24h = p.change24h;
       }
       // If asset is on Binance but not in DeFiLlama, add it
       if (!ex && p.mc) {
-        map.set(p.symbol, { symbol: p.symbol, name: p.symbol, mc: p.mc });
+        map.set(p.symbol, {
+          symbol: p.symbol, name: p.symbol, mc: p.mc,
+          price: p.price, volume24h: p.volume24h, change24h: p.change24h,
+        });
       }
     }
 
