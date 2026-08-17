@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown } from "lucide-react";
 import {
   Card,
   CardContent,
