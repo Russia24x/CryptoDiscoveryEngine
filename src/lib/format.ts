@@ -31,6 +31,7 @@ const DECISION_STYLES: Record<Decision, string> = {
   INVESTIGATE: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
   AVOID: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30",
   REJECT: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+  DATA_LIMITED: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/30",
 };
 
 export function decisionClass(d: Decision) {

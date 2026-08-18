@@ -103,7 +103,8 @@
     "WATCH": "تحت نظر",
     "INVESTIGATE": "نیاز به بررسی",
     "AVOID": "اجتناب کن",
-    "REJECT": "رد"
+    "REJECT": "رد",
+    "DATA_LIMITED": "داده ناکافی"
   },
   "detail": {
     "back": "بازگشت به فهرست",

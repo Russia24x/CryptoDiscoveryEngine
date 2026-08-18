@@ -94,13 +94,11 @@ async function runScan(): Promise<ScanResponse> {
       .map((p) => {
         const pr = (p.revenue24h ?? 0) * 365;
         const pc = (p.fees24h ?? 0) * 365;
-        const tc = pc * 0.15;
         const float = p.mc ?? 1;
         const unlock12m = float * 0.05;
         const emission12m = float * 0.02;
 
-        // Derive accrualKind from category — not hardcoded to "fee" for all.
-        // This makes the SAR gate actually conditional (mechanism-aware).
+        // Derive accrualKind from category.
         const category = (p.category ?? "").toLowerCase();
         let accrualKind: "fee" | "buyback_burn" | "staking" | "revenue_share" = "fee";
         if (category.includes("burn") || category.includes("buyback")) {
@@ -111,25 +109,29 @@ async function runScan(): Promise<ScanResponse> {
           accrualKind = "revenue_share";
         }
 
-        // Track whether revenue/fees are real or fabricated — for transparency.
+        // REAL DATA TRACKING: Only use real revenue/fees, NOT fabricated estimates.
+        // When no real revenue/fees exist, pr/pc/tc are ZERO — this means:
+        //   - IA_raw will be very low (components are 0 when no data)
+        //   - Confidence (C) will be very low (dataCompleteness = 0.2)
+        //   - The asset gets DATA_LIMITED decision (not REJECT)
+        // This is honest: we don't know enough to score this asset.
         const hasRealRevenue = pr > 0;
         const hasRealFees = pc > 0;
-        const isPrFabricated = !hasRealRevenue && !hasRealFees;
-        const fabricatedPr = isPrFabricated
-          ? ((p.tvl ?? 0) * 0.03 || float * 0.02)
-          : pr;
-        const fabricatedPc = isPrFabricated
-          ? (fabricatedPr * 0.8)
-          : (pc || fabricatedPr * 0.8 || float * 0.015);
-
-        // Data-driven quality metrics — penalize missing data
         const hasRealMC = float > 1;
         const hasRealTVL = (p.tvl ?? 0) > 0;
         const hasRealPrice = (p.price ?? 0) > 0;
+
+        // Value accrual chain: only from REAL data, no fabrication
+        const realPr = hasRealRevenue ? pr : 0;
+        const realPc = hasRealFees ? pc : 0;
+        const realTc = realPc * 0.15; // TC = 15% of PC (only if PC is real)
+        const realGea = hasRealFees ? (p.fees24h ?? 0) * 365 : 0;
+
+        // Data completeness: count real data sources
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
         const dataCompleteness = 0.2 + (dataPoints / 5) * 0.8;
-        const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.4;
-        const baseConfidence = 0.5 + (dataPoints / 5) * 0.35;
+        const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.3;
+        const baseConfidence = 0.4 + (dataPoints / 5) * 0.5; // 0.4 to 0.9
         const marketLiquidityRisk = float > 1e9 ? 0.15 : float > 1e8 ? 0.3 : float > 1e7 ? 0.5 : 0.7;
 
         return {
@@ -137,35 +139,45 @@ async function runScan(): Promise<ScanResponse> {
           name: p.name,
           category: p.category ?? "Crypto",
           accrualKind,
-          pr: pr || fabricatedPr,
-          pc: pc || fabricatedPc,
-          tc,
-          gea: (p.fees24h ?? 0) * 365,
+          // REAL DATA ONLY — no fabricated revenue. Assets without real
+          // revenue/fees get pr=0, pc=0, tc=0, which flows through to
+          // low PQ/VA/V scores. Confidence (C) is also low. This is the
+          // honest "we don't have enough data" signal.
+          pr: realPr,
+          pc: realPc,
+          tc: realTc,
+          gea: realGea,
           marketCap: p.mc ?? 0,
           fdv: p.fdv ?? p.mc ?? 0,
           float,
-          buyback: 0,
-          burn: 0,
+          // buyback/burn: undefined (not 0) — SAR gate checks `sar !== undefined`
+          // Setting to 0 would make SAR = 0/(unlock+emission) = 0, which
+          // auto-rejects buyback_burn assets. undefined means "no data → skip SAR gate".
+          buyback: undefined,
+          burn: undefined,
           unlock12m,
           emission12m,
-          tokenYield: 0,
-          inflationGrade: hasRealMC ? 0.55 : 0.7,
-          mcOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, float / (tc * 10))) : 0.5,
-          mcOverPrPercentile: pr > 0 ? Math.min(0.95, Math.max(0.1, float / (pr * 20))) : 0.5,
-          fdvOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, (p.fdv ?? float) / (tc * 10))) : 0.5,
-          revenueGrowth: hasRealRevenue ? 0.65 : 0.4,
-          revenueStability: hasRealRevenue ? 0.6 : 0.35,
-          revenueDiversification: hasRealFees ? 0.55 : 0.35,
-          marketPosition: hasRealMC ? Math.min(0.9, 0.3 + Math.log10(float) / 20) : 0.4,
-          userGrowth: 0.45,
-          realYield: hasRealRevenue ? Math.min(0.1, pr / (float * 100)) : 0.01,
-          buybackActivity: 0.05,
-          revenueConcentration: 0.4,
-          insiderConcentration: 0.4,
-          regulatoryRisk: (p.category === "RWA" || p.category === "CEX") ? 0.6 : 0.35,
-          smartContractRisk: 0.3,
+          tokenYield: undefined,
+          inflationGrade: hasRealMC ? 0.55 : undefined,
+          // Percentile from real ratios — undefined when no data (norm01 → 0)
+          mcOverTcPercentile: realTc > 0 ? Math.min(0.95, Math.max(0.1, float / (realTc * 10))) : undefined,
+          mcOverPrPercentile: realPr > 0 ? Math.min(0.95, Math.max(0.1, float / (realPr * 20))) : undefined,
+          fdvOverTcPercentile: realTc > 0 ? Math.min(0.95, Math.max(0.1, (p.fdv ?? float) / (realTc * 10))) : undefined,
+          // Revenue metrics: undefined when no real data → norm01(0) → penalized
+          revenueGrowth: hasRealRevenue ? 0.65 : undefined,
+          revenueStability: hasRealRevenue ? 0.6 : undefined,
+          revenueDiversification: hasRealFees ? 0.55 : undefined,
+          marketPosition: hasRealMC ? Math.min(0.9, 0.3 + Math.log10(float) / 20) : undefined,
+          userGrowth: undefined, // no real source for this
+          realYield: hasRealRevenue ? Math.min(0.1, realPr / (float * 100)) : undefined,
+          buybackActivity: undefined, // no real source
+          // Risk metrics: undefined when no real source → norm01(0) → penalized
+          revenueConcentration: undefined,
+          insiderConcentration: undefined,
+          regulatoryRisk: (p.category === "RWA" || p.category === "CEX") ? 0.6 : undefined,
+          smartContractRisk: undefined,
           marketLiquidityRisk,
-          dependencyRisk: 0.4,
+          dependencyRisk: undefined,
           dataCompleteness,
           sourceQuality,
           modelStability: baseConfidence,

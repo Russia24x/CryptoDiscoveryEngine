@@ -111,7 +111,7 @@ export interface EngineResult {
   explanation: DecisionExplanation;
 }
 
-export type Decision = "BUY" | "WATCH" | "INVESTIGATE" | "AVOID" | "REJECT";
+export type Decision = "BUY" | "WATCH" | "INVESTIGATE" | "AVOID" | "REJECT" | "DATA_LIMITED";
 
 export interface DecisionExplanation {
   decision: Decision;
@@ -245,12 +245,15 @@ export function confidence(i: EngineInputs): number {
 
 export function runEngine(i: EngineInputs): EngineResult {
   const chain = valueAccrualChain(i.pr, i.pc, i.tc);
+  // Use num() to coerce undefined → 0 for supply metrics calculations.
+  // buyback/burn being undefined means "no data" — the SAR gate checks
+  // `sar !== undefined` separately, but the arithmetic needs numbers.
   const sup = supplyMetrics(
-    i.buyback,
-    i.burn,
-    i.unlock12m,
-    i.emission12m,
-    i.float,
+    num(i.buyback),
+    num(i.burn),
+    num(i.unlock12m),
+    num(i.emission12m),
+    num(i.float),
   );
 
   // VAE is expressed as a PERCENT throughout (matches the locked gate "VAE < 10").
@@ -337,9 +340,12 @@ function decide(
   c: number,
   r: number,
 ): Decision {
-  // REJECT if gate failed OR data is very incomplete (C < 0.65 = < ~2 data points)
+  // REJECT = fundamental gate failure (VAE < 10, δ < 5%, R > 90)
   if (!gatePassed) return "REJECT";
-  if (c < 0.65) return "REJECT";
+  // DATA_LIMITED = insufficient data — NOT a fundamental rejection.
+  // This keeps "bad project" (REJECT) separate from "we don't know enough"
+  // (DATA_LIMITED), as the 4-tier ranking was designed to do.
+  if (c < 0.65) return "DATA_LIMITED";
   if (iaFinal >= 35 && c >= 0.85 && r <= 0.55) return "BUY";
   if (iaFinal >= 30) return "WATCH";
   if (iaFinal >= 22) return "INVESTIGATE";

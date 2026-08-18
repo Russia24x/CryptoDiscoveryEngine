@@ -103,7 +103,8 @@
     "WATCH": "WATCH",
     "INVESTIGATE": "INVESTIGATE",
     "AVOID": "AVOID",
-    "REJECT": "REJECT"
+    "REJECT": "REJECT",
+    "DATA_LIMITED": "DATA LIMITED"
   },
   "detail": {
     "back": "Back to scan",
