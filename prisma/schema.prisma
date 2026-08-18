@@ -20,7 +20,7 @@ model Provider {
   authMode    String   @default("none") // "none" | "header" | "query" | "bearer"
   keyHeader   String?  // e.g. "X-CMC-Pro-API-Key"
   keyQuery    String?  // e.g. "api_key"
-  apiKey      String?  // stored encrypted-at-rest by the app layer if present
+  apiKey      String?  // stored PLAINTEXT — sanitizeProvider() strips from API responses. TODO: encrypt at rest
   enabled     Boolean  @default(true)
   freeTier    Boolean  @default(true)
   tier        String   @default("free") // "free" | "paid"
