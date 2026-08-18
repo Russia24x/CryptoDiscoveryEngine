@@ -36,7 +36,8 @@ interface ProviderRow {
   authMode: string;
   keyHeader: string | null;
   keyQuery: string | null;
-  apiKey: string | null;
+  apiKey: string | null; // legacy — kept for type compat but always null from API now
+  hasKey: boolean; // SECURITY: replaces apiKey in API responses
   freeTier: boolean;
   tier: string;
   priority: number;
@@ -420,7 +421,7 @@ function ProviderCard({
               onClick={() => setEditing((s) => !s)}
             >
               <KeyRound className="h-3.5 w-3.5" />
-              {p.apiKey ? "••••" : t("settings.apiKey")}
+              {p.hasKey ? "••••" : t("settings.apiKey")}
             </Button>
           )}
           <Switch checked={p.enabled} onCheckedChange={onToggle} />

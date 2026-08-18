@@ -126,7 +126,13 @@ export interface DecisionExplanation {
 const clamp = (x: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, x));
 
-const norm01 = (x: number | undefined, fallback = 0.5) =>
+/**
+ * Normalize a value to 0..1.
+ * EVIDENCE > NARRATIVE: When data is missing (undefined/NaN), return 0 — NOT 0.5.
+ * This penalizes assets with no data instead of giving them a "medium" score.
+ * The 0.5 fallback was a design flaw that made opaque assets look average.
+ */
+const norm01 = (x: number | undefined, fallback = 0) =>
   x === undefined || Number.isNaN(x) ? fallback : clamp(x, 0, 1);
 
 const num = (x: number | undefined, fallback = 0) =>
@@ -226,11 +232,13 @@ export function scoreTQ(
 // ─── Confidence Factor C ──────────────────────────────────────────
 
 export function confidence(i: EngineInputs): number {
-  const dc = norm01(i.dataCompleteness, 0.7);
-  const sq = norm01(i.sourceQuality, 0.7);
-  const ms = norm01(i.modelStability, 0.7);
+  const dc = norm01(i.dataCompleteness, 0.2);
+  const sq = norm01(i.sourceQuality, 0.3);
+  const ms = norm01(i.modelStability, 0.3);
   const raw = 0.4 * dc + 0.35 * sq + 0.25 * ms;
-  return clamp(raw, 0.7, 1.0); // C ∈ [0.70, 1.00]
+  // Lower floor: 0.5 instead of 0.7 — incomplete data should hurt more.
+  // The decide() function now REJECTs when C < 0.65 (see below).
+  return clamp(raw, 0.5, 1.0);
 }
 
 // ─── Master pipeline ──────────────────────────────────────────────
@@ -329,7 +337,9 @@ function decide(
   c: number,
   r: number,
 ): Decision {
+  // REJECT if gate failed OR data is very incomplete (C < 0.65 = < ~2 data points)
   if (!gatePassed) return "REJECT";
+  if (c < 0.65) return "REJECT";
   if (iaFinal >= 35 && c >= 0.85 && r <= 0.55) return "BUY";
   if (iaFinal >= 30) return "WATCH";
   if (iaFinal >= 22) return "INVESTIGATE";

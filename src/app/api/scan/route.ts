@@ -99,34 +99,46 @@ async function runScan(): Promise<ScanResponse> {
         const unlock12m = float * 0.05;
         const emission12m = float * 0.02;
 
-        // Derive percentile inputs from REAL market data instead of hardcoded 0.5.
-        // These are rough but data-driven estimates that improve with more data.
+        // Derive accrualKind from category — not hardcoded to "fee" for all.
+        // This makes the SAR gate actually conditional (mechanism-aware).
+        const category = (p.category ?? "").toLowerCase();
+        let accrualKind: "fee" | "buyback_burn" | "staking" | "revenue_share" = "fee";
+        if (category.includes("burn") || category.includes("buyback")) {
+          accrualKind = "buyback_burn";
+        } else if (category.includes("staking") || category.includes("liquid")) {
+          accrualKind = "staking";
+        } else if (category.includes("revenue") || category.includes("share")) {
+          accrualKind = "revenue_share";
+        }
+
+        // Track whether revenue/fees are real or fabricated — for transparency.
         const hasRealRevenue = pr > 0;
         const hasRealFees = pc > 0;
+        const isPrFabricated = !hasRealRevenue && !hasRealFees;
+        const fabricatedPr = isPrFabricated
+          ? ((p.tvl ?? 0) * 0.03 || float * 0.02)
+          : pr;
+        const fabricatedPc = isPrFabricated
+          ? (fabricatedPr * 0.8)
+          : (pc || fabricatedPr * 0.8 || float * 0.015);
+
+        // Data-driven quality metrics — penalize missing data
         const hasRealMC = float > 1;
         const hasRealTVL = (p.tvl ?? 0) > 0;
         const hasRealPrice = (p.price ?? 0) > 0;
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
-        // Data completeness: 5 data points = 1.0, 0 = 0.2 (minimum)
         const dataCompleteness = 0.2 + (dataPoints / 5) * 0.8;
-        // Source quality: real revenue/fees from DeFiLlama = high quality
         const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.4;
-        // Confidence scales with data availability
-        const baseConfidence = 0.5 + (dataPoints / 5) * 0.35; // 0.5 to 0.85
-
-        // Risk inputs derived from data quality:
-        // More data → lower risk (we know what we're investing in)
-        const dataRisk = 1 - dataCompleteness; // 0.2 to 0.8
-        // Market cap → liquidity: bigger MC = lower liquidity risk
+        const baseConfidence = 0.5 + (dataPoints / 5) * 0.35;
         const marketLiquidityRisk = float > 1e9 ? 0.15 : float > 1e8 ? 0.3 : float > 1e7 ? 0.5 : 0.7;
 
         return {
           symbol: p.symbol,
           name: p.name,
           category: p.category ?? "Crypto",
-          accrualKind: "fee" as const,
-          pr: pr || (p.tvl ?? 0) * 0.03 || float * 0.02,
-          pc: pc || pr * 0.8 || float * 0.015,
+          accrualKind,
+          pr: pr || fabricatedPr,
+          pc: pc || fabricatedPc,
           tc,
           gea: (p.fees24h ?? 0) * 365,
           marketCap: p.mc ?? 0,
@@ -138,11 +150,9 @@ async function runScan(): Promise<ScanResponse> {
           emission12m,
           tokenYield: 0,
           inflationGrade: hasRealMC ? 0.55 : 0.7,
-          // Derive percentile from MC/TC ratio instead of hardcoded 0.5
           mcOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, float / (tc * 10))) : 0.5,
           mcOverPrPercentile: pr > 0 ? Math.min(0.95, Math.max(0.1, float / (pr * 20))) : 0.5,
           fdvOverTcPercentile: tc > 0 ? Math.min(0.95, Math.max(0.1, (p.fdv ?? float) / (tc * 10))) : 0.5,
-          // Revenue metrics: real data → higher scores
           revenueGrowth: hasRealRevenue ? 0.65 : 0.4,
           revenueStability: hasRealRevenue ? 0.6 : 0.35,
           revenueDiversification: hasRealFees ? 0.55 : 0.35,
@@ -150,7 +160,6 @@ async function runScan(): Promise<ScanResponse> {
           userGrowth: 0.45,
           realYield: hasRealRevenue ? Math.min(0.1, pr / (float * 100)) : 0.01,
           buybackActivity: 0.05,
-          // Risk metrics derived from data quality
           revenueConcentration: 0.4,
           insiderConcentration: 0.4,
           regulatoryRisk: (p.category === "RWA" || p.category === "CEX") ? 0.6 : 0.35,
@@ -219,7 +228,7 @@ export async function GET() {
           where: { symbol: r.symbol },
           create: {
             symbol: r.symbol, name: r.name, category: r.category,
-            accrualKind: "fee",
+            accrualKind: inputs.find((i) => i.symbol === r.symbol)?.accrualKind ?? "fee",
             lastIARaw: r.result.iaRaw,
             lastIAEffective: r.result.iaEffective,
             lastIAFinal: r.result.iaFinal,

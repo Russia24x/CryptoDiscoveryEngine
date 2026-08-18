@@ -57,11 +57,41 @@ async function ensureSeed() {
   }
 }
 
+/**
+ * SECURITY: Strip apiKey from provider records before sending to the client.
+ * Returns `hasKey: boolean` instead of the raw key value.
+ */
+function sanitizeProvider(p: {
+  id: string; slug: string; name: string; baseUrl: string;
+  authMode: string; keyHeader: string | null; keyQuery: string | null;
+  apiKey: string | null; freeTier: boolean; tier: string;
+  priority: number; categories: string; notes: string | null;
+  enabled: boolean; createdAt: Date; updatedAt: Date;
+}) {
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    baseUrl: p.baseUrl,
+    authMode: p.authMode,
+    keyHeader: p.keyHeader,
+    keyQuery: p.keyQuery,
+    hasKey: Boolean(p.apiKey), // boolean flag — never expose the raw key
+    freeTier: p.freeTier,
+    tier: p.tier,
+    priority: p.priority,
+    categories: p.categories,
+    notes: p.notes,
+    enabled: p.enabled,
+  };
+}
+
 export async function GET() {
   try {
     await ensureSeed();
     const providers = await db.provider.findMany({ orderBy: { priority: "asc" } });
-    return NextResponse.json({ providers });
+    // SECURITY: never return apiKey to the client
+    return NextResponse.json({ providers: providers.map(sanitizeProvider) });
   } catch {
     return NextResponse.json({ providers: DEFAULT_PROVIDERS });
   }
@@ -71,15 +101,13 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   try {
     await ensureSeed();
-    // Generate a slug if not provided. Ensure uniqueness: if the slug already
-    // exists, append a numeric suffix (provider-name-2, -3, …).
     const baseSlug =
       body.slug ||
       (body.name || "provider")
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "") // strip non-ascii (persian chars etc.)
+        .replace(/[^a-z0-9-]/g, "")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "") || `provider`;
     let slug = baseSlug;
@@ -98,7 +126,7 @@ export async function POST(req: Request) {
         authMode: body.authMode || "none",
         keyHeader: body.keyHeader || null,
         keyQuery: body.keyQuery || null,
-        apiKey: body.apiKey || null,
+        apiKey: body.apiKey || null, // stored raw — TODO: encrypt at rest
         freeTier: body.tier === "free",
         tier: body.tier || "free",
         priority: Number(body.priority) || 100,
@@ -107,7 +135,8 @@ export async function POST(req: Request) {
         enabled: body.enabled !== false,
       },
     });
-    return NextResponse.json({ provider: created });
+    // SECURITY: sanitize before returning
+    return NextResponse.json({ provider: sanitizeProvider(created) });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -119,9 +148,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "slug required" }, { status: 400 });
   }
   try {
-    // Only update fields that are explicitly provided.
-    // apiKey: "" is treated as no-op (guard against wiping a key with an
-    // empty-string payload). Use null to intentionally clear.
     const data: Record<string, unknown> = {};
     if (body.enabled !== undefined) data.enabled = body.enabled;
     if (body.apiKey !== undefined && body.apiKey !== "") data.apiKey = body.apiKey;
@@ -131,7 +157,8 @@ export async function PATCH(req: Request) {
       where: { slug: body.slug },
       data,
     });
-    return NextResponse.json({ provider: updated });
+    // SECURITY: sanitize before returning
+    return NextResponse.json({ provider: sanitizeProvider(updated) });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
