@@ -130,9 +130,18 @@ const clamp = (x: number, lo: number, hi: number) =>
  * Normalize a value to 0..1.
  * EVIDENCE > NARRATIVE: When data is missing (undefined/NaN), return 0 — NOT 0.5.
  * This penalizes assets with no data instead of giving them a "medium" score.
- * The 0.5 fallback was a design flaw that made opaque assets look average.
  */
 const norm01 = (x: number | undefined, fallback = 0) =>
+  x === undefined || Number.isNaN(x) ? fallback : clamp(x, 0, 1);
+
+/**
+ * Normalize a RISK value to 0..1.
+ * RISK fields are inverted: higher = more risk.
+ * When data is missing, we should assume HIGH risk (0.7), not LOW (0).
+ * "When we don't know how dangerous something is, assume it's dangerous."
+ * This is the opposite of norm01 for quality/growth fields.
+ */
+const normRisk = (x: number | undefined, fallback = 0.7) =>
   x === undefined || Number.isNaN(x) ? fallback : clamp(x, 0, 1);
 
 const num = (x: number | undefined, fallback = 0) =>
@@ -206,12 +215,14 @@ export function scoreV(i: EngineInputs): number {
 }
 
 export function scoreR(i: EngineInputs): number {
-  const rc = norm01(i.revenueConcentration);
-  const ic = norm01(i.insiderConcentration);
-  const reg = norm01(i.regulatoryRisk);
-  const sc = norm01(i.smartContractRisk);
-  const ml = norm01(i.marketLiquidityRisk);
-  const dr = norm01(i.dependencyRisk);
+  // RISK fields: use normRisk (fallback 0.7 = "assume dangerous when unknown")
+  // This is the OPPOSITE of norm01 (which returns 0 for quality fields).
+  const rc = normRisk(i.revenueConcentration);
+  const ic = normRisk(i.insiderConcentration);
+  const reg = normRisk(i.regulatoryRisk);
+  const sc = normRisk(i.smartContractRisk);
+  const ml = normRisk(i.marketLiquidityRisk);
+  const dr = normRisk(i.dependencyRisk);
   return 0.25 * rc + 0.2 * ic + 0.2 * reg + 0.15 * sc + 0.1 * ml + 0.1 * dr; // 0..1
 }
 
@@ -245,9 +256,8 @@ export function confidence(i: EngineInputs): number {
 
 export function runEngine(i: EngineInputs): EngineResult {
   const chain = valueAccrualChain(i.pr, i.pc, i.tc);
-  // Use num() to coerce undefined → 0 for supply metrics calculations.
-  // buyback/burn being undefined means "no data" — the SAR gate checks
-  // `sar !== undefined` separately, but the arithmetic needs numbers.
+  // Supply metrics: use num() to coerce undefined → 0 for ARITHMETIC,
+  // but preserve the "no data" signal for the SAR gate separately.
   const sup = supplyMetrics(
     num(i.buyback),
     num(i.burn),
@@ -255,6 +265,14 @@ export function runEngine(i: EngineInputs): EngineResult {
     num(i.emission12m),
     num(i.float),
   );
+
+  // SAR gate: pass undefined when buyback/burn data is missing.
+  // This prevents the gate from auto-rejecting buyback_burn assets
+  // when we simply don't have buyback/burn numbers (SAR = 0 is not
+  // the same as "we know SAR is 0" — it means "we don't know").
+  const sarForGate = (i.buyback === undefined && i.burn === undefined)
+    ? undefined
+    : sup.sar;
 
   // VAE is expressed as a PERCENT throughout (matches the locked gate "VAE < 10").
   const vaePct = chain.vae * 100;
@@ -269,7 +287,7 @@ export function runEngine(i: EngineInputs): EngineResult {
     vae: vaePct,
     delta: chain.delta * 100, // to percent
     risk: r * 100,
-    sar: sup.sar,
+    sar: sarForGate,
     accrualKind: i.accrualKind,
   });
 
