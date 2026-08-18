@@ -95,8 +95,6 @@ async function runScan(): Promise<ScanResponse> {
         const pr = (p.revenue24h ?? 0) * 365;
         const pc = (p.fees24h ?? 0) * 365;
         const float = p.mc ?? 1;
-        const unlock12m = float * 0.05;
-        const emission12m = float * 0.02;
 
         // Derive accrualKind from category.
         const category = (p.category ?? "").toLowerCase();
@@ -110,24 +108,34 @@ async function runScan(): Promise<ScanResponse> {
         }
 
         // REAL DATA TRACKING: Only use real revenue/fees, NOT fabricated estimates.
-        // When no real revenue/fees exist, pr/pc/tc are ZERO — this means:
-        //   - IA_raw will be very low (components are 0 when no data)
-        //   - Confidence (C) will be very low (dataCompleteness = 0.2)
-        //   - The asset gets DATA_LIMITED decision (not REJECT)
-        // This is honest: we don't know enough to score this asset.
         const hasRealRevenue = pr > 0;
         const hasRealFees = pc > 0;
         const hasRealMC = float > 1;
         const hasRealTVL = (p.tvl ?? 0) > 0;
         const hasRealPrice = (p.price ?? 0) > 0;
 
-        // Value accrual chain: only from REAL data, no fabrication
+        // Value accrual chain: only from REAL data, no fabrication.
+        // pr/pc are zero when no real revenue/fees exist.
+        // tc: previously fabricated as pc × 0.15 (a fixed ratio assumption).
+        // Now: tc = 0 when pc = 0. The 0.15 ratio is an industry average
+        // for fee-sharing protocols, but using it when we have NO data
+        // about the actual tokenholder share is fabrication.
+        // TODO: When DeFiLlama adds a "tokenholder capture" field, use it.
         const realPr = hasRealRevenue ? pr : 0;
         const realPc = hasRealFees ? pc : 0;
-        const realTc = realPc * 0.15; // TC = 15% of PC (only if PC is real)
+        const realTc = hasRealFees ? realPc * 0.15 : 0; // 15% is an industry estimate — only applied when PC is real
         const realGea = hasRealFees ? (p.fees24h ?? 0) * 365 : 0;
 
-        // Data completeness: count real data sources
+        // Supply metrics: previously hardcoded as float × 5% / float × 2%.
+        // These are rough industry averages, but without actual vesting
+        // schedule or emission data, they're fabricated. We still use them
+        // because the engine's supplyMetrics function divides by (unlock+emission)
+        // and needs non-zero values — but we document the assumption.
+        // TODO: Integrate Token Terminal or on-chain vesting data for real values.
+        const unlock12m = float * 0.05;  // ESTIMATE — no real vesting data source
+        const emission12m = float * 0.02; // ESTIMATE — no real emission data source
+
+        // Data completeness: count real data sources (excluding estimates)
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
         const dataCompleteness = 0.2 + (dataPoints / 5) * 0.8;
         const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.3;
@@ -139,10 +147,7 @@ async function runScan(): Promise<ScanResponse> {
           name: p.name,
           category: p.category ?? "Crypto",
           accrualKind,
-          // REAL DATA ONLY — no fabricated revenue. Assets without real
-          // revenue/fees get pr=0, pc=0, tc=0, which flows through to
-          // low PQ/VA/V scores. Confidence (C) is also low. This is the
-          // honest "we don't have enough data" signal.
+          // REAL DATA ONLY — no fabricated revenue.
           pr: realPr,
           pc: realPc,
           tc: realTc,
@@ -150,16 +155,17 @@ async function runScan(): Promise<ScanResponse> {
           marketCap: p.mc ?? 0,
           fdv: p.fdv ?? p.mc ?? 0,
           float,
-          // buyback/burn: undefined (not 0) — SAR gate checks `sar !== undefined`
-          // Setting to 0 would make SAR = 0/(unlock+emission) = 0, which
-          // auto-rejects buyback_burn assets. undefined means "no data → skip SAR gate".
+          // buyback/burn: undefined (not 0) — SAR gate skips when undefined
           buyback: undefined,
           burn: undefined,
+          // ESTIMATES (not real data) — documented assumptions for vesting/emission.
+          // These affect FDR and NSP scores. Better than 0 (which would make
+          // FDR = 0 = "no dilution" — false) but not evidence-based.
           unlock12m,
           emission12m,
           tokenYield: undefined,
           inflationGrade: hasRealMC ? 0.55 : undefined,
-          // Percentile from real ratios — undefined when no data (norm01 → 0)
+          // Percentile from real ratios — undefined when no data
           mcOverTcPercentile: realTc > 0 ? Math.min(0.95, Math.max(0.1, float / (realTc * 10))) : undefined,
           mcOverPrPercentile: realPr > 0 ? Math.min(0.95, Math.max(0.1, float / (realPr * 20))) : undefined,
           fdvOverTcPercentile: realTc > 0 ? Math.min(0.95, Math.max(0.1, (p.fdv ?? float) / (realTc * 10))) : undefined,
@@ -168,10 +174,10 @@ async function runScan(): Promise<ScanResponse> {
           revenueStability: hasRealRevenue ? 0.6 : undefined,
           revenueDiversification: hasRealFees ? 0.55 : undefined,
           marketPosition: hasRealMC ? Math.min(0.9, 0.3 + Math.log10(float) / 20) : undefined,
-          userGrowth: undefined, // no real source for this
+          userGrowth: undefined,
           realYield: hasRealRevenue ? Math.min(0.1, realPr / (float * 100)) : undefined,
-          buybackActivity: undefined, // no real source
-          // Risk metrics: undefined when no real source → norm01(0) → penalized
+          buybackActivity: undefined,
+          // Risk metrics: undefined → normRisk(0.7) → "assume dangerous"
           revenueConcentration: undefined,
           insiderConcentration: undefined,
           regulatoryRisk: (p.category === "RWA" || p.category === "CEX") ? 0.6 : undefined,
