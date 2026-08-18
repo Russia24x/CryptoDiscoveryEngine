@@ -126,19 +126,21 @@ async function runScan(): Promise<ScanResponse> {
         const realTc = hasRealFees ? realPc * 0.15 : 0; // 15% is an industry estimate — only applied when PC is real
         const realGea = hasRealFees ? (p.fees24h ?? 0) * 365 : 0;
 
-        // Supply metrics: previously hardcoded as float × 5% / float × 2%.
-        // These are rough industry averages, but without actual vesting
-        // schedule or emission data, they're fabricated. We still use them
-        // because the engine's supplyMetrics function divides by (unlock+emission)
-        // and needs non-zero values — but we document the assumption.
+        // Supply metrics: ESTIMATES — no real vesting/emission data source.
+        // We use industry averages because supplyMetrics divides by (unlock+emission)
+        // and 0 would mean "FDR=0 = no dilution" which is a false claim.
+        // BUT: we track that these are estimates and penalize confidence.
         // TODO: Integrate Token Terminal or on-chain vesting data for real values.
-        const unlock12m = float * 0.05;  // ESTIMATE — no real vesting data source
-        const emission12m = float * 0.02; // ESTIMATE — no real emission data source
+        const isSupplyEstimated = true; // no real vesting/emission data source exists yet
+        const unlock12m = float * 0.05;  // ESTIMATE
+        const emission12m = float * 0.02; // ESTIMATE
 
         // Data completeness: count real data sources (excluding estimates)
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
         const dataCompleteness = 0.2 + (dataPoints / 5) * 0.8;
-        const sourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.3;
+        // sourceQuality: penalized when supply metrics are estimated (not real)
+        const rawSourceQuality = hasRealRevenue ? 0.85 : hasRealFees ? 0.7 : 0.3;
+        const sourceQuality = isSupplyEstimated ? rawSourceQuality * 0.85 : rawSourceQuality; // -15% for estimated supply
         const baseConfidence = 0.4 + (dataPoints / 5) * 0.5; // 0.4 to 0.9
         const marketLiquidityRisk = float > 1e9 ? 0.15 : float > 1e8 ? 0.3 : float > 1e7 ? 0.5 : 0.7;
 
