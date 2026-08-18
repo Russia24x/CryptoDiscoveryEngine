@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { encrypt, decrypt, isEncrypted } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
         authMode: body.authMode || "none",
         keyHeader: body.keyHeader || null,
         keyQuery: body.keyQuery || null,
-        apiKey: body.apiKey || null, // stored raw — TODO: encrypt at rest
+        apiKey: body.apiKey ? encrypt(body.apiKey) : null, // ENCRYPTED at rest with AES-256-GCM
         freeTier: body.tier === "free",
         tier: body.tier || "free",
         priority: Number(body.priority) || 100,
@@ -150,7 +151,7 @@ export async function PATCH(req: Request) {
   try {
     const data: Record<string, unknown> = {};
     if (body.enabled !== undefined) data.enabled = body.enabled;
-    if (body.apiKey !== undefined && body.apiKey !== "") data.apiKey = body.apiKey;
+    if (body.apiKey !== undefined && body.apiKey !== "") data.apiKey = encrypt(body.apiKey); // ENCRYPT before storing
     if (body.priority !== undefined) data.priority = Number(body.priority);
 
     const updated = await db.provider.update({

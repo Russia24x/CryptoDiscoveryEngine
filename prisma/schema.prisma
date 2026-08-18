@@ -20,7 +20,7 @@ model Provider {
   authMode    String   @default("none") // "none" | "header" | "query" | "bearer"
   keyHeader   String?  // e.g. "X-CMC-Pro-API-Key"
   keyQuery    String?  // e.g. "api_key"
-  apiKey      String?  // stored PLAINTEXT — sanitizeProvider() strips from API responses. TODO: encrypt at rest
+  apiKey      String?  // encrypted with AES-256-GCM (see src/lib/crypto.ts). sanitizeProvider strips from API responses.
   enabled     Boolean  @default(true)
   freeTier    Boolean  @default(true)
   tier        String   @default("free") // "free" | "paid"
