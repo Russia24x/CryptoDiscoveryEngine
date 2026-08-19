@@ -228,7 +228,11 @@ async function runScan(): Promise<ScanResponse> {
 export async function GET() {
   const body = await runScan();
 
-  // persist scan record + per-asset ScanRows (best effort, non-blocking).
+  // The scan results already contain all the information we need for
+  // persistence. We DON'T need to reference `inputs` from runScan()'s
+  // scope — the rows already have symbol, name, category, and result.
+  // The accrualKind was derived from category in runScan() and is
+  // already embedded in the engine result's explanation.
   try {
     const scan = await db.scan.create({
       data: {
@@ -248,7 +252,14 @@ export async function GET() {
           where: { symbol: r.symbol },
           create: {
             symbol: r.symbol, name: r.name, category: r.category,
-            accrualKind: inputs.find((i) => i.symbol === r.symbol)?.accrualKind ?? "fee",
+            // Derive accrualKind from category (same logic as runScan)
+            accrualKind: (() => {
+              const cat = (r.category ?? "").toLowerCase();
+              if (cat.includes("burn") || cat.includes("buyback")) return "buyback_burn";
+              if (cat.includes("staking") || cat.includes("liquid")) return "staking";
+              if (cat.includes("revenue") || cat.includes("share")) return "revenue_share";
+              return "fee";
+            })(),
             lastIARaw: r.result.iaRaw,
             lastIAEffective: r.result.iaEffective,
             lastIAFinal: r.result.iaFinal,
