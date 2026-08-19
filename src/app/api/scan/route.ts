@@ -3,7 +3,7 @@ import { runEngine, type EngineInputs } from "@/engine";
 import { rankResults, type RankedRow } from "@/engine/ranking";
 import { listProviders } from "@/providers/registry";
 import { db } from "@/lib/db";
-import { cacheScanInputs } from "@/lib/scan-cache";
+import { cacheScanInputs, getCachedInput } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,14 +126,20 @@ async function runScan(): Promise<ScanResponse> {
         const realTc = hasRealFees ? realPc * 0.15 : 0; // 15% is an industry estimate — only applied when PC is real
         const realGea = hasRealFees ? (p.fees24h ?? 0) * 365 : 0;
 
-        // Supply metrics: ESTIMATES — no real vesting/emission data source.
-        // We use industry averages because supplyMetrics divides by (unlock+emission)
-        // and 0 would mean "FDR=0 = no dilution" which is a false claim.
-        // BUT: we track that these are estimates and penalize confidence.
-        // TODO: Integrate Token Terminal or on-chain vesting data for real values.
-        const isSupplyEstimated = true; // no real vesting/emission data source exists yet
-        const unlock12m = float * 0.05;  // ESTIMATE
-        const emission12m = float * 0.02; // ESTIMATE
+        // Supply metrics: set to undefined when no real vesting/emission data.
+        // This makes FDR, NSP, and SAR all undefined in the engine output,
+        // which is HONEST: "we don't know the dilution risk" is better than
+        // a fabricated constant (0.07) that looks like evidence.
+        // The engine's scoreTQ and supplyMetrics handle undefined gracefully:
+        //   - supplyMetrics receives num(undefined) = 0 for arithmetic
+        //   - scoreTQ uses norm01 for fdr/sar (norm01(undefined) = 0)
+        //   - The SAR gate receives undefined (skips check)
+        // When real vesting data becomes available (Token Terminal, on-chain),
+        // replace undefined with the real numbers.
+        // TODO: Integrate Token Terminal or on-chain vesting data.
+        const isSupplyEstimated = false; // no longer using estimates — undefined is more honest
+        const unlock12m = undefined as unknown as number; // undefined → engine treats as missing
+        const emission12m = undefined as unknown as number; // undefined → engine treats as missing
 
         // Data completeness: count real data sources (excluding estimates)
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
@@ -160,9 +166,8 @@ async function runScan(): Promise<ScanResponse> {
           // buyback/burn: undefined (not 0) — SAR gate skips when undefined
           buyback: undefined,
           burn: undefined,
-          // ESTIMATES (not real data) — documented assumptions for vesting/emission.
-          // These affect FDR and NSP scores. Better than 0 (which would make
-          // FDR = 0 = "no dilution" — false) but not evidence-based.
+          // Supply metrics: undefined — no real vesting/emission data.
+          // Engine treats as missing (num(undefined)=0, SAR gate skips).
           unlock12m,
           emission12m,
           tokenYield: undefined,
@@ -252,14 +257,8 @@ export async function GET() {
           where: { symbol: r.symbol },
           create: {
             symbol: r.symbol, name: r.name, category: r.category,
-            // Derive accrualKind from category (same logic as runScan)
-            accrualKind: (() => {
-              const cat = (r.category ?? "").toLowerCase();
-              if (cat.includes("burn") || cat.includes("buyback")) return "buyback_burn";
-              if (cat.includes("staking") || cat.includes("liquid")) return "staking";
-              if (cat.includes("revenue") || cat.includes("share")) return "revenue_share";
-              return "fee";
-            })(),
+            // Use cached accrualKind from the engine input (single source of truth)
+            accrualKind: getCachedInput(r.symbol)?.accrualKind ?? "fee",
             lastIARaw: r.result.iaRaw,
             lastIAEffective: r.result.iaEffective,
             lastIAFinal: r.result.iaFinal,
