@@ -12,6 +12,11 @@
 import type { EngineInputs, EngineResult } from "./index";
 import { runEngine } from "./index";
 
+// Safe number coercion — same as num() in engine/index.ts but local
+// to avoid circular imports. undefined → 0 for arithmetic.
+const num = (x: number | undefined, fallback = 0): number =>
+  x === undefined || Number.isNaN(x) ? fallback : x;
+
 export interface PeerPercentile {
   key: string;          // metric key
   label: string;        // human label
@@ -49,8 +54,8 @@ const METRIC_DEFS: MetricDef[] = [
   { key: "revenueStability", label: "Revenue Stability", extract: (i) => i.revenueStability ?? 0, higherBetter: true },
   { key: "vae", label: "Value Accrual Eff.", extract: (i) => i.tc / Math.max(i.pr, 1) * 100, higherBetter: true },
   { key: "delta", label: "Distribution Rate", extract: (i) => i.tc / Math.max(i.pc, 1), higherBetter: true },
-  { key: "sar", label: "Supply Absorption", extract: (i) => (i.buyback + i.burn) / Math.max(i.unlock12m + i.emission12m, 1), higherBetter: true },
-  { key: "fdrInv", label: "Dilution Safety", extract: (i) => 1 - (i.unlock12m + i.emission12m) / Math.max(i.float, 1), higherBetter: true },
+  { key: "sar", label: "Supply Absorption", extract: (i) => (num(i.buyback) + num(i.burn)) / Math.max(num(i.unlock12m) + num(i.emission12m), 1), higherBetter: true },
+  { key: "fdrInv", label: "Dilution Safety", extract: (i) => 1 - (num(i.unlock12m) + num(i.emission12m)) / Math.max(num(i.float), 1), higherBetter: true },
   { key: "realYield", label: "Real Yield", extract: (i) => i.realYield ?? 0, higherBetter: true },
   { key: "mcOverPr", label: "P/R (cheapness)", extract: (i) => i.pr / Math.max(i.marketCap, 1), higherBetter: true },
   { key: "riskInv", label: "Risk (low)", extract: (i) => 1 - (i.revenueConcentration ?? 0.4) * 0.25 - (i.insiderConcentration ?? 0.4) * 0.2 - (i.regulatoryRisk ?? 0.4) * 0.2 - (i.smartContractRisk ?? 0.3) * 0.15 - (i.marketLiquidityRisk ?? 0.35) * 0.1 - (i.dependencyRisk ?? 0.4) * 0.1, higherBetter: true },

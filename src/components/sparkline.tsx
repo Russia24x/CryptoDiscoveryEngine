@@ -123,7 +123,7 @@ export function Sparkline({
         aria-hidden={!interactive}
         role={interactive ? "img" : undefined}
         aria-label={interactive ? `Sparkline with ${values.length} points, range ${formatValue(min)} to ${formatValue(max)}` : undefined}
-        title={title}
+        {...(title ? { title } : {})}
         tabIndex={interactive ? 0 : undefined}
         onMouseMove={interactive ? onMove : undefined}
         onMouseLeave={interactive ? onLeave : undefined}

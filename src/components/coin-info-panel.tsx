@@ -20,7 +20,6 @@ import {
   Calendar,
   DollarSign,
   BarChart3,
-  Supply,
 } from "lucide-react";
 import { cn, fmtUsd, fmtPct } from "@/lib/format";
 

@@ -210,7 +210,6 @@ export function DetailView({
                   rank={row.rankConf}
                   value={result.confidence * 100}
                   tone="amber"
-                  suffix=""
                 />
                 <RankCard
                   label={t("detail.effectiveRank")}

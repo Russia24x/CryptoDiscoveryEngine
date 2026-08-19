@@ -16,6 +16,19 @@ interface TrendPoint {
   decision: string | null;
 }
 
+// Prisma returns Date for finishedAt, but TrendPoint expects string | null
+function toTrendPoint(r: { iaFinal: number | null; iaRaw: number | null; iaEffective: number | null; confidence: number | null; decision: string | null; scan?: { finishedAt: Date | null } | null }): TrendPoint | null {
+  if (r.iaFinal === null) return null;
+  return {
+    t: r.scan?.finishedAt ? r.scan.finishedAt.toISOString() : null,
+    iaFinal: r.iaFinal,
+    iaRaw: r.iaRaw ?? 0,
+    iaEffective: r.iaEffective ?? 0,
+    confidence: r.confidence ?? 0,
+    decision: r.decision,
+  };
+}
+
 // Max symbols per batch request. The scan endpoint returns up to 100 rows,
 // so the trend batch must accept the full set (was 50, which caused a 400
 // whenever a scan returned > 50 assets — see discovery-view.tsx trendSymbols).
@@ -77,16 +90,9 @@ export async function POST(req: Request) {
         continue;
       }
       const projRows = (byProject.get(pid) ?? [])
-        .reverse() // oldest-first for charting
-        .filter((r) => r.iaFinal !== null)
-        .map((r) => ({
-          t: r.scan?.finishedAt ?? null,
-          iaFinal: r.iaFinal as number,
-          iaRaw: r.iaRaw as number,
-          iaEffective: r.iaEffective as number,
-          confidence: r.confidence as number,
-          decision: r.decision,
-        }));
+        .reverse()
+        .map(toTrendPoint)
+        .filter((x): x is TrendPoint => x !== null);
       trends[sym] = projRows;
     }
 

@@ -187,7 +187,8 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
   }
 
   const a = data.analysis;
-  const dirPct = (a.direction * 100).toFixed(0);
+  const dirPctNum = a.direction * 100;
+  const dirPct = dirPctNum.toFixed(0);
 
   return (
     <Card>
@@ -218,7 +219,7 @@ export function TechnicalPanel({ symbol }: { symbol: string }) {
           <div className="rounded-lg border border-border/60 bg-card/60 p-3 text-center">
             <div className="text-[10px] uppercase text-muted-foreground mb-1">{t("technical.direction")}</div>
             <span className={cn("font-mono text-lg font-bold", a.direction > 0 ? "text-emerald-500" : a.direction < 0 ? "text-red-500" : "text-muted-foreground")}>
-              {dirPct > 0 ? "+" : ""}{dirPct}%
+              {dirPctNum > 0 ? "+" : ""}{dirPct}%
             </span>
           </div>
         </div>

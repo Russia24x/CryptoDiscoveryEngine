@@ -42,6 +42,8 @@ export interface ProtocolSummary {
   volume24h?: number;
   /** 24h price change percentage. */
   change24h?: number;
+  /** Market cap (alias for mc, used by some providers). */
+  marketCap?: number;
 }
 
 export interface ProtocolDetail extends ProtocolSummary {

@@ -335,7 +335,7 @@ export function runEngine(i: EngineInputs): EngineResult {
   };
 
   const decision = decide(gate.passed, iaFinal, c, r);
-  const explanation = explain(i, {
+  const partialResult: Omit<EngineResult, "symbol" | "name" | "explanation"> = {
     gate,
     components,
     iaRaw,
@@ -344,7 +344,8 @@ export function runEngine(i: EngineInputs): EngineResult {
     regime: m,
     iaFinal,
     decision,
-  });
+  };
+  const explanation = explain(i, { ...partialResult, symbol: i.symbol, name: i.name, explanation: { decision, forPoints: [], againstPoints: [], whatChanges: [], statusLine: "" } } as EngineResult);
 
   return {
     symbol: i.symbol,
@@ -402,7 +403,7 @@ function explain(i: EngineInputs, r: EngineResult): DecisionExplanation {
   if (c.fdr >= 0.25) againstPoints.push({ key: "fdr_high", value: (c.fdr * 100).toFixed(0) + "%" });
   if (c.r >= 0.6) againstPoints.push({ key: "risk_elevated", value: (c.r * 100).toFixed(0) });
   if (c.delta < 0.2) againstPoints.push({ key: "delta_low", value: (c.delta * 100).toFixed(0) + "%" });
-  if (i.unlock12m > 0 && i.float > 0 && i.unlock12m / i.float >= 0.15)
+  if (i.unlock12m !== undefined && i.unlock12m > 0 && i.float > 0 && i.unlock12m / i.float >= 0.15)
     againstPoints.push({ key: "unlock_high", value: ((i.unlock12m / i.float) * 100).toFixed(0) + "%" });
 
   // What changes the decision

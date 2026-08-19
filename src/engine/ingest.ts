@@ -110,8 +110,29 @@ function isUrlSafeForFetch(urlStr: string): boolean {
       if (a === 0) return false;
     }
 
-    // Block IPv6 loopback and link-local
-    if (host === "::1" || host === "::ffff:127.0.0.1") return false;
+    // Block IPv6 loopback, link-local, and IPv4-mapped IPv6 bypasses
+    // Node normalizes ::ffff:127.0.0.1 to ::ffff:7f00:1 — check hex form
+    if (host === "::1") return false;
+    // Check for IPv4-mapped IPv6 (::ffff:x.x.x.x → ::ffff:xxxx:xxxx)
+    const v4MappedMatch = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+    if (v4MappedMatch) {
+      // Convert hex pairs to IPv4 octets and check against private ranges
+      const a = parseInt(v4MappedMatch[1].slice(0, 2) || v4MappedMatch[1], 16);
+      const b = parseInt(v4MappedMatch[1].slice(2, 4) || "0", 16);
+      if (a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0) return false;
+    }
+    // Also check the dotted-decimal form that some Node versions keep
+    if (host.startsWith("::ffff:")) {
+      const v4Part = host.slice(7); // extract the x.x.x.x part
+      const v4Parts = v4Part.split(".");
+      if (v4Parts.length === 4) {
+        const nums = v4Parts.map(p => parseInt(p, 10));
+        if (nums.every(n => n >= 0 && n <= 255)) {
+          const [a, b] = nums;
+          if (a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0) return false;
+        }
+      }
+    }
     if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return false;
 
     // Block known metadata endpoints

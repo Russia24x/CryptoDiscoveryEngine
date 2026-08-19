@@ -19,9 +19,11 @@ const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
 export function AppHeader({
   view,
   setView,
+  onOpenCommand,
 }: {
   view: View;
   setView: (v: View) => void;
+  onOpenCommand?: () => void;
 }) {
   const t = useTranslations();
 

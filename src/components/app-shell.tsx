@@ -63,19 +63,21 @@ export function AppShell() {
   const handlePaletteAsset = useCallback((symbol: string) => {
     // Find the asset in the cached scan data to build a RankedRow stub.
     // If not found, we create a minimal stub that DetailView can enrich.
-    const stub: RankedRow = {
+    const stub = {
       symbol,
       name: symbol,
       result: {
+        symbol,
+        name: symbol,
         iaRaw: 0,
         iaEffective: 0,
         iaFinal: 0,
         confidence: 0,
         regime: 0,
-        decision: "WATCH",
+        decision: "WATCH" as const,
         components: { pq: 0, tq: 0, va: 0, v: 0, r: 0, alpha: 0, delta: 0, vae: 0, sar: 0, nsp: 0, fdr: 0 },
         gate: { passed: false, reasons: [] },
-        explanation: { forPoints: [], againstPoints: [], whatChanges: [], statusLine: "" },
+        explanation: { decision: "WATCH" as const, forPoints: [], againstPoints: [], whatChanges: [], statusLine: "" },
       },
       rankFund: 0,
       rankConf: 0,
