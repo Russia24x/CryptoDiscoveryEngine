@@ -36,11 +36,11 @@ export interface EngineInputs {
   mcOverPrPercentile?: number; // for (1 - MC/PR_n)
   fdvOverTcPercentile?: number; // for (1 - FDV/TC_n)
 
-  // Supply metrics (usd)
-  buyback: number; // annualised
-  burn: number; // annualised
-  unlock12m: number; // next 12m unlock usd
-  emission12m: number; // next 12m emission usd
+  // Supply metrics (usd) — undefined means "no data available"
+  buyback?: number; // annualised
+  burn?: number; // annualised
+  unlock12m?: number; // next 12m unlock usd
+  emission12m?: number; // next 12m emission usd
   tokenUtility?: number; // TU 0..1
   governanceQuality?: number; // GQ 0..1
 
@@ -234,7 +234,18 @@ export function scoreTQ(
 ): number {
   const vaeN = clamp(vae / 100, 0, 1); // normalise VAE onto 0..1 (100%+ = 1)
   const sarN = clamp(sar, 0, 1);
-  const fdrInv = 1 - clamp(fdr, 0, 1);
+
+  // FDR is a RISK metric: higher = more dilution = worse for tokenholders.
+  // When supply data is missing (unlock12m/emission12m are undefined),
+  // fdr = 0 from supplyMetrics. But fdr=0 should NOT mean "best possible"
+  // (fdrInv = 1.0) — it means "we don't know".
+  // Use the same inverted-fallback pattern as normRisk: when the raw inputs
+  // were missing, penalize instead of rewarding.
+  const supplyDataMissing = i.unlock12m === undefined && i.emission12m === undefined;
+  // If supply data is missing, use a conservative fdrInv of 0.3
+  // (equivalent to FDR = 0.7 = "assume significant dilution risk")
+  const fdrInv = supplyDataMissing ? 0.3 : (1 - clamp(fdr, 0, 1));
+
   const tu = norm01(i.tokenUtility);
   const gq = norm01(i.governanceQuality);
   return 0.3 * vaeN + 0.2 * sarN + 0.2 * fdrInv + 0.2 * tu + 0.1 * gq; // 0..1

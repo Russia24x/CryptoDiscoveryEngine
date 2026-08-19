@@ -36,14 +36,90 @@ async function fetchText(url: string, timeoutMs = 12000): Promise<string | null>
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
+      redirect: "manual", // SSRF: don't auto-follow redirects to internal URLs
       headers: { "User-Agent": "CryptoSieve/1.0 (feed ingester)" },
     });
+    // Handle redirects manually: only follow to safe URLs
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (location) {
+        const redirectUrl = new URL(location, url).href;
+        // Re-validate the redirect target (same isUrlSafe check)
+        if (!isUrlSafeForFetch(redirectUrl)) return null;
+        // Follow the redirect manually (one level — no infinite loops)
+        const redirectRes = await fetch(redirectUrl, {
+          signal: ctrl.signal,
+          redirect: "manual",
+          headers: { "User-Agent": "CryptoSieve/1.0 (feed ingester)" },
+        });
+        if (!redirectRes.ok && redirectRes.status < 300) return null;
+        return await redirectRes.text();
+      }
+      return null;
+    }
     if (!res.ok) return null;
     return await res.text();
   } catch {
     return null;
   } finally {
     clearTimeout(t);
+  }
+}
+
+/**
+ * SSRF protection: validate that a URL is safe to fetch server-side.
+ * Blocks: localhost, private IPs, link-local, metadata endpoints.
+ * Also handles decimal, hex, and octal IP encodings.
+ */
+function isUrlSafeForFetch(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, ""); // strip IPv6 brackets
+
+    // Block literal hostnames
+    if (host === "localhost" || host === "0.0.0.0") return false;
+
+    // Try to parse as IP — handle decimal, hex, octal encodings
+    // Node's URL already normalizes some of these, but let's be thorough
+    let ip: number[] | null = null;
+    const parts = host.split(".");
+    if (parts.length === 4) {
+      ip = parts.map(p => parseInt(p, 10));
+      // Check if any part was parsed as NaN (could be hex like 0x7f000001)
+      if (ip.some(isNaN)) {
+        // Try hex parsing for each part
+        ip = parts.map(p => p.startsWith("0x") ? parseInt(p, 16) : NaN);
+        if (ip.some(isNaN)) ip = null;
+      }
+    }
+
+    if (ip && ip.every(o => o >= 0 && o <= 255)) {
+      const [a, b] = ip;
+      // 127.x.x.x (loopback)
+      if (a === 127) return false;
+      // 10.x.x.x (private class A)
+      if (a === 10) return false;
+      // 172.16-31.x.x (private class B)
+      if (a === 172 && b >= 16 && b <= 31) return false;
+      // 192.168.x.x (private class C)
+      if (a === 192 && b === 168) return false;
+      // 169.254.x.x (link-local / metadata)
+      if (a === 169 && b === 254) return false;
+      // 0.x.x.x (reserved)
+      if (a === 0) return false;
+    }
+
+    // Block IPv6 loopback and link-local
+    if (host === "::1" || host === "::ffff:127.0.0.1") return false;
+    if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return false;
+
+    // Block known metadata endpoints
+    if (host === "metadata.google.internal") return false;
+
+    return true;
+  } catch {
+    return false;
   }
 }
 

@@ -138,8 +138,8 @@ async function runScan(): Promise<ScanResponse> {
         // replace undefined with the real numbers.
         // TODO: Integrate Token Terminal or on-chain vesting data.
         const isSupplyEstimated = false; // no longer using estimates — undefined is more honest
-        const unlock12m = undefined as unknown as number; // undefined → engine treats as missing
-        const emission12m = undefined as unknown as number; // undefined → engine treats as missing
+        const unlock12m = undefined; // no real vesting data source
+        const emission12m = undefined; // no real emission data source
 
         // Data completeness: count real data sources (excluding estimates)
         const dataPoints = [hasRealRevenue, hasRealFees, hasRealMC, hasRealTVL, hasRealPrice].filter(Boolean).length;
