@@ -55,7 +55,10 @@ const METRIC_DEFS: MetricDef[] = [
   { key: "vae", label: "Value Accrual Eff.", extract: (i) => i.tc / Math.max(i.pr, 1) * 100, higherBetter: true },
   { key: "delta", label: "Distribution Rate", extract: (i) => i.tc / Math.max(i.pc, 1), higherBetter: true },
   { key: "sar", label: "Supply Absorption", extract: (i) => (num(i.buyback) + num(i.burn)) / Math.max(num(i.unlock12m) + num(i.emission12m), 1), higherBetter: true },
-  { key: "fdrInv", label: "Dilution Safety", extract: (i) => 1 - (num(i.unlock12m) + num(i.emission12m)) / Math.max(num(i.float), 1), higherBetter: true },
+  { key: "fdrInv", label: "Dilution Safety", extract: (i) => {
+    const supplyMissing = i.unlock12m === undefined && i.emission12m === undefined;
+    return supplyMissing ? 0.3 : (1 - (num(i.unlock12m) + num(i.emission12m)) / Math.max(num(i.float), 1));
+  }, higherBetter: true },
   { key: "realYield", label: "Real Yield", extract: (i) => i.realYield ?? 0, higherBetter: true },
   { key: "mcOverPr", label: "P/R (cheapness)", extract: (i) => i.pr / Math.max(i.marketCap, 1), higherBetter: true },
   { key: "riskInv", label: "Risk (low)", extract: (i) => 1 - (i.revenueConcentration ?? 0.4) * 0.25 - (i.insiderConcentration ?? 0.4) * 0.2 - (i.regulatoryRisk ?? 0.4) * 0.2 - (i.smartContractRisk ?? 0.3) * 0.15 - (i.marketLiquidityRisk ?? 0.35) * 0.1 - (i.dependencyRisk ?? 0.4) * 0.1, higherBetter: true },

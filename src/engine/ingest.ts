@@ -111,14 +111,17 @@ function isUrlSafeForFetch(urlStr: string): boolean {
     }
 
     // Block IPv6 loopback, link-local, and IPv4-mapped IPv6 bypasses
-    // Node normalizes ::ffff:127.0.0.1 to ::ffff:7f00:1 — check hex form
+    // Node normalizes ::ffff:127.0.0.1 to ::ffff:7f00:1 (hex, not dotted-decimal)
     if (host === "::1") return false;
-    // Check for IPv4-mapped IPv6 (::ffff:x.x.x.x → ::ffff:xxxx:xxxx)
+    // Check for IPv4-mapped IPv6 (::ffff:xxxx:xxxx)
+    // CRITICAL: hex groups are NOT zero-padded by Node. "10.0.0.1" → "::ffff:a00:1"
+    // NOT "::ffff:0a00:0001". Must padStart(4,"0") before slicing.
     const v4MappedMatch = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
     if (v4MappedMatch) {
-      // Convert hex pairs to IPv4 octets and check against private ranges
-      const a = parseInt(v4MappedMatch[1].slice(0, 2) || v4MappedMatch[1], 16);
-      const b = parseInt(v4MappedMatch[1].slice(2, 4) || "0", 16);
+      const g1 = v4MappedMatch[1].padStart(4, "0");
+      const g2 = v4MappedMatch[2].padStart(4, "0");
+      const a = parseInt(g1.slice(0, 2), 16);
+      const b = parseInt(g1.slice(2, 4), 16);
       if (a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0) return false;
     }
     // Also check the dotted-decimal form that some Node versions keep

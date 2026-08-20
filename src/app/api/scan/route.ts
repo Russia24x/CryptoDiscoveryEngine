@@ -297,7 +297,9 @@ export async function GET() {
       where: { symbol: { in: body.rows.map((r) => r.symbol) } },
       select: { id: true, symbol: true },
     });
-    const projIdBySymbol = new Map(projects.map((p) => [p.symbol, p.id]));
+    const projIdBySymbol = new Map<string, string>(
+      projects.map((p): [string, string] => [p.symbol, p.id])
+    );
 
     await db.scanRow.createMany({
       data: body.rows

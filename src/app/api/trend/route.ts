@@ -51,7 +51,9 @@ export async function POST(req: Request) {
       where: { symbol: { in: upper } },
       select: { id: true, symbol: true },
     });
-    const pidBySymbol = new Map(projects.map((p) => [p.symbol, p.id]));
+    const pidBySymbol = new Map<string, string>(
+      projects.map((p): [string, string] => [p.symbol, p.id])
+    );
 
     // Fetch all scan rows for these projects in one query.
     const projectIds = Array.from(pidBySymbol.values());
