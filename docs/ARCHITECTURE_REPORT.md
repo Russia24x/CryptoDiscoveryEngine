@@ -2,6 +2,16 @@
 
 > **No illusions. No assumptions. Every claim verified against actual code.**
 > Generated: Round 38, after user asked: "Are the outputs really based on real data? Is the engine logic correct?"
+>
+> **⚠️ STATUS UPDATE (post-report fix rounds):** Several issues identified here
+> have been resolved in subsequent commits — notably the FDR inverted-penalty
+> bug (now `supplyMissing ? 0.3 : ...` in both `scoreTQ` and `percentile.ts`),
+> the `DATA_LIMITED` decision type (separates "bad project" from "insufficient
+> data"), `normRisk(0.7)` for risk fields ("assume dangerous when unknown"),
+> and the elimination of fabricated `pr/pc` estimates (now uses real data
+> only, with `isSupplyEstimated` flag lowering source quality). See
+> [`worklog.md`](../worklog.md) for the verified current state. The analysis
+> below is preserved as the architectural reference.
 
 ---
 

@@ -2,6 +2,14 @@
 
 > Generated: Round 28 (comprehensive codebase audit per user request)
 > Method: Audited every file against PRD v2 + original user requirements
+>
+> **⚠️ STATUS UPDATE (post-audit fix rounds):** The P0/P1 issues identified in this
+> audit have been resolved across multiple subsequent commits. The "demo data"
+> issues are largely addressed — the engine now runs against live market data
+> (100 assets via the 3-tier CoinPaprika → CoinGecko → Binance provider chain).
+> See [`worklog.md`](../worklog.md) for the current verified state and
+> [`docs/ARCHITECTURE_REPORT.md`](ARCHITECTURE_REPORT.md) for the post-fix
+> architecture review. The matrix below is preserved as historical context.
 
 ---
 

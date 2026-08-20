@@ -200,7 +200,7 @@ src/
       feeds/live/      #   live feed ingestion (5-min cache)
       providers/       #   data provider management
 
-  components/          # 23 React components
+  components/          # 22 React components
     discovery-view.tsx #   main scanner table with filters, search, keyboard nav
     detail-view.tsx    #   asset detail with all panels
     comparison-view.tsx #  comparison matrix + insights + winner callout
@@ -299,11 +299,27 @@ The Next.js app is the first presentation layer over this core.
 
 ```bash
 bun run engine:check   # 59 invariants: formulas, gate, percentiles, formatting, trend ordering, thesis
-bun run lint           # ESLint
+bun run lint           # ESLint (0 errors expected)
+npx tsc --noEmit       # TypeScript strict-mode type check (0 errors expected)
+bun run build          # Next.js production build (verifies everything end-to-end)
 ```
 
 The `engine:check` script asserts the locked architecture — any change to the
 formulas, gate thresholds, or percentile logic will fail immediately.
+
+### Quality gates (all green)
+- `tsc --noEmit` → 0 errors
+- `bun run lint` → 0 errors, 23 warnings (all benign: unused `_` params, unused imports)
+- `bun run engine:check` → 59/59 invariants pass
+- `bun run build` → exit 0, clean compile
+
+---
+
+## Handover & worklog
+
+See [`worklog.md`](worklog.md) for the living handover document — current project
+status, completed modifications, verification results, and next-phase
+recommendations. Append-only; newest entries at the bottom.
 
 ---
 
