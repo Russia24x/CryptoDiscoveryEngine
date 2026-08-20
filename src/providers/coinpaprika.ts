@@ -15,7 +15,7 @@
  * - /tickers/{id}/historical — OHLCV (free tier: recent only)
  */
 import { safeJsonFetch } from "./types";
-import { isTripped, trip, isRateLimitStatus } from "@/lib/circuit-breaker";
+import { isTripped, trip } from "@/lib/circuit-breaker";
 
 const PAPRIKA_CIRCUIT = "coinpaprika";
 

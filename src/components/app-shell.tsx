@@ -14,7 +14,7 @@ import { WatchlistView } from "./watchlist-view";
 import { CommandPalette } from "./command-palette";
 import type { RankedRow } from "@/engine/ranking";
 import { AnimatePresence, motion } from "framer-motion";
-import { Compass, Settings as SettingsIcon, FileText, Star } from "lucide-react";
+import { Compass, Settings as SettingsIcon, FileText } from "lucide-react";
 
 export type View = "discovery" | "compare" | "feeds" | "settings" | "watchlist";
 

@@ -1,5 +1,5 @@
 import { demoAssets } from "@/providers/demo-data";
-import { getAllCachedInputs, getCachedInput } from "@/lib/scan-cache";
+import { getAllCachedInputs } from "@/lib/scan-cache";
 import type { EngineInputs } from "@/engine";
 
 /** Get the list of assets available for comparison. Uses scan cache (live data). */

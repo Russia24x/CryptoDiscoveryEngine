@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
-import { Button } from "@/components/ui/button";
+
 import { Compass, Settings as SettingsIcon, Sparkles, GitCompare, Newspaper } from "lucide-react";
 import { cn } from "@/lib/format";
 import type { View } from "./app-shell";
@@ -19,7 +19,6 @@ const NAV_ITEMS: { key: View; icon: typeof Compass; labelKey: string }[] = [
 export function AppHeader({
   view,
   setView,
-  onOpenCommand,
 }: {
   view: View;
   setView: (v: View) => void;

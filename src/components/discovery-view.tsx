@@ -25,7 +25,6 @@ import {
   Radar,
   Play,
   RefreshCw,
-  TrendingUp,
   CheckCircle2,
   XCircle,
   Info,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFullCoinData, findCoinId, getTicker } from "@/providers/coinpaprika";
+import { getFullCoinData } from "@/providers/coinpaprika";
 import { getCachedInput } from "@/lib/scan-cache";
 
 export const runtime = "nodejs";

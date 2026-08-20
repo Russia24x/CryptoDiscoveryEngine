@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+
+
 import {
   Newspaper,
   Rss,
   Send,
   Twitter,
-  Trash2,
   RefreshCw,
   Inbox,
   ExternalLink,
@@ -130,7 +130,7 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
   const allItems = itemsData?.items ?? [];
 
   const items = useMemo(() => {
-    let filtered = filter === "all" ? allItems : allItems.filter((i) => i.sourceKind === filter);
+    const filtered = filter === "all" ? allItems : allItems.filter((i) => i.sourceKind === filter);
     return [...filtered].sort((a, b) => {
       const aT = new Date(a.publishedAt).getTime();
       const bT = new Date(b.publishedAt).getTime();

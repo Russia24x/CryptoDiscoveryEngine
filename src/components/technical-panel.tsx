@@ -9,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+
+
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -23,7 +24,6 @@ import {
   Target,
   BarChart3,
   RotateCw,
-  CandlestickChart,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 

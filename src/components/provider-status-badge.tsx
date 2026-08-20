@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/format";
+import { AlertCircle } from "lucide-react";
+
 import { useTranslations } from "next-intl";
 
 interface CircuitStatus {

@@ -9,7 +9,7 @@
  *
  * @see docs/PRD.md §4 (Dynamic Peer Benchmarking)
  */
-import type { EngineInputs, EngineResult } from "./index";
+import type { EngineInputs } from "./index";
 import { runEngine } from "./index";
 
 // Safe number coercion — same as num() in engine/index.ts but local
