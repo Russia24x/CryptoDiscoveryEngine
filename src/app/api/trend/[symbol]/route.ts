@@ -24,10 +24,12 @@ export async function GET(
     // first) + take, then reverse so the chart renders oldest→newest.
     // (orderBy asc + take would return the OLDEST N, freezing the sparkline
     //  once >N scans accumulate — a subtle bug.)
+    // Order by the parent scan's completion time — ScanRow.id is a cuid whose
+    // lexicographic order is NOT chronological.
     const LIMIT = 20;
     const rows = await db.scanRow.findMany({
       where: { projectId: project.id },
-      orderBy: { id: "desc" },
+      orderBy: { scan: { finishedAt: "desc" } },
       take: LIMIT,
       select: {
         iaFinal: true,
@@ -53,8 +55,10 @@ export async function GET(
 
     return NextResponse.json({ symbol, points });
   } catch (e) {
+    // Log details server-side only — never leak internals to clients.
+    console.error("[trend] single failed:", e instanceof Error ? e.message : e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e), points: [] },
+      { error: "trend_fetch_failed", points: [] },
       { status: 500 },
     );
   }

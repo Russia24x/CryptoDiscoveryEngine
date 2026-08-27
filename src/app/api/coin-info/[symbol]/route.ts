@@ -122,8 +122,10 @@ export async function GET(
       tvl: undefined, // available in scan data
     });
   } catch (e) {
+    // Log details server-side only — never leak internals to clients.
+    console.error("[coin-info] failed:", e instanceof Error ? e.message : e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
+      { error: "coin_info_failed", message: "Failed to assemble coin info from providers." },
       { status: 500 },
     );
   }

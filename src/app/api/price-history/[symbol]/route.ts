@@ -15,8 +15,20 @@ export async function GET(
 ) {
   const { symbol } = await params;
   const url = new URL(req.url);
-  const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? "30"), 1), 365);
-  const sym = symbol.toUpperCase();
+  // Validate days BEFORE clamping — Math.max/min propagate NaN silently, and
+  // NaN later reaches new Date(NaN).toISOString() which throws.
+  const daysRaw = Number(url.searchParams.get("days") ?? "30");
+  if (!Number.isFinite(daysRaw) || daysRaw < 1) {
+    return NextResponse.json(
+      { error: "invalid_days", message: "days must be a number between 1 and 365" },
+      { status: 400 },
+    );
+  }
+  const days = Math.min(Math.max(Math.floor(daysRaw), 1), 365);
+  const sym = symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!sym) {
+    return NextResponse.json({ error: "invalid_symbol" }, { status: 400 });
+  }
   const ctx = { fetch };
 
   // Check cache first (for the slim sparkline format). The detail view's
@@ -114,9 +126,10 @@ export async function GET(
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    // Log details server-side only — never leak internals to clients.
+    console.error("[price-history] fetch failed:", e instanceof Error ? e.message : e);
     return NextResponse.json(
-      { symbol: sym, error: "fetch_failed", message: msg, candles: [] },
+      { symbol: sym, error: "fetch_failed", message: "Failed to fetch price history from upstream provider.", candles: [] },
       { status: 500 },
     );
   }

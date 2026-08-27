@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+// Shared SSRF validator (single source of truth — also used at fetch time by engine/ingest.ts)
+import { isUrlSafeForFetch } from "@/lib/url-safety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,27 +15,12 @@ const DEFAULT_FEED_SOURCES = [
 ];
 
 /**
- * SSRF protection: validate that a URL is safe to fetch server-side.
- * Blocks: localhost, private IPs, link-local, metadata endpoints.
+ * SSRF protection: shared validator — blocks localhost, private IPs (decimal/hex/octal
+ * encodings), IPv4-mapped IPv6 bypasses, link-local, and metadata endpoints.
+ * Write-time validation here + read-time validation in engine/ingest.ts fetchText().
  */
 function isUrlSafe(urlStr: string): boolean {
-  try {
-    const url = new URL(urlStr);
-    // Only allow http/https
-    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-    // Block localhost and common local hostnames
-    const host = url.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return false;
-    // Block private IP ranges (10.x, 172.16-31.x, 192.168.x, 169.254.x)
-    if (/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|169\.254\.)/.test(host)) return false;
-    // Block IPv6 loopback and link-local
-    if (host === "::1" || host === "[::1]") return false;
-    // Block metadata endpoints
-    if (host === "169.254.169.254" || host === "metadata.google.internal") return false;
-    return true;
-  } catch {
-    return false;
-  }
+  return isUrlSafeForFetch(urlStr);
 }
 
 async function ensureSeedFeeds() {

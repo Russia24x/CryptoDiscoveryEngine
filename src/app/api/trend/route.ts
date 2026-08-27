@@ -37,7 +37,11 @@ const LIMIT = 20;
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const symbols: string[] = Array.isArray(body.symbols) ? body.symbols : [];
+  // Type-check every entry — a non-string (e.g. a number/object from a malformed
+  // client) would crash s.toUpperCase() and leak a TypeError in a 500.
+  const symbols: string[] = Array.isArray(body.symbols)
+    ? body.symbols.filter((s): s is string => typeof s === "string")
+    : [];
   if (!symbols.length) {
     return NextResponse.json({ trends: {} });
   }
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const upper = symbols.map((s) => s.toUpperCase());
+    const upper = symbols.map((s) => s.toUpperCase().replace(/[^A-Z0-9]/g, "")).filter(Boolean);
     const projects = await db.project.findMany({
       where: { symbol: { in: upper } },
       select: { id: true, symbol: true },
@@ -60,7 +64,9 @@ export async function POST(req: Request) {
     const rows = projectIds.length
       ? await db.scanRow.findMany({
           where: { projectId: { in: projectIds } },
-          orderBy: { id: "desc" },
+          // Order by the parent scan's completion time — ScanRow.id is a cuid
+          // string whose lexicographic order is NOT chronological.
+          orderBy: { scan: { finishedAt: "desc" } },
           // take more than LIMIT per project, then group+slice in JS. The
           // max we'd fetch is MAX_SYMBOLS projects × 20 = 2000 rows, acceptable.
           take: MAX_SYMBOLS * LIMIT,
@@ -100,8 +106,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ trends });
   } catch (e) {
+    // Log details server-side only — never leak internals to clients.
+    console.error("[trend] batch failed:", e instanceof Error ? e.message : e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e), trends: {} },
+      { error: "trend_fetch_failed", trends: {} },
       { status: 500 },
     );
   }
