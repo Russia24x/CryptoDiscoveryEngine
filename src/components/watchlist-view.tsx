@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -39,17 +37,6 @@ import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
 
 type SortKey = "added" | "name" | "iaFinal" | "changePct" | "decision";
-
-interface WatchlistAsset {
-  symbol: string;
-  name: string;
-  category?: string;
-  iaFinal?: number;
-  decision?: string;
-  changePct?: number;
-  closes?: number[];
-  price?: number;
-}
 
 interface ScanResp {
   rows: Array<{

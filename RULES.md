@@ -64,8 +64,8 @@ The formulas (`IA_raw`, `IA_effective`, `IA_final`, `VAE = α × δ`, the four r
 ## Rule 5 — Free-First, Key-Ready
 
 - All integrations default to **free, no-key APIs** (CoinGecko public, DeFiLlama public).
-- The provider abstraction (`src/lib/providers/`) must support **optional API keys** so paid providers (CoinMarketCap, Messari, etc.) can be added later without refactoring.
-- Never hardcode a paid API key. Keys are stored in the DB / env and managed via the Settings UI.
+- The provider abstraction (`src/providers/`) must support **optional API keys** so paid providers (CoinMarketCap, Messari, etc.) can be added later without refactoring.
+- Never hardcode a paid API key. Keys are stored in the DB (encrypted at rest, see `src/lib/crypto.ts`) / env and managed via the Settings UI.
 
 ---
 
@@ -85,14 +85,14 @@ The product philosophy: every score, every decision, every thesis statement must
 
 ## Rule 8 — Future-Portable Architecture
 
-The core engine (`src/lib/engine/`) and types must be framework-agnostic pure TypeScript so the same logic can later power:
+The core engine (`src/engine/`) and types must be framework-agnostic pure TypeScript so the same logic can later power:
 
 - A mobile app (React Native / Expo)
 - A desktop app (Tauri / Electron)
 - A CLI tool
 - A different web framework
 
-UI code stays in `src/app/` and `src/components/`; engine code stays in `src/lib/engine/` and must not import React or Next.js.
+UI code stays in `src/app/` and `src/components/`; engine code stays in `src/engine/` (and `src/providers/` for data providers) and must not import React or Next.js. Shared server-side helpers live in `src/lib/`.
 
 ---
 

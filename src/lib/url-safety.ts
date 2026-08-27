@@ -61,10 +61,9 @@ export function isUrlSafeForFetch(urlStr: string): boolean {
     // Check for IPv4-mapped IPv6 (::ffff:xxxx:xxxx)
     // CRITICAL: hex groups are NOT zero-padded by Node. "10.0.0.1" → "::ffff:a00:1"
     // NOT "::ffff:0a00:0001". Must padStart(4,"0") before slicing.
-    const v4MappedMatch = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+    const v4MappedMatch = host.match(/^::ffff:([0-9a-f]{1,4}):(?:[0-9a-f]{1,4})$/i);
     if (v4MappedMatch) {
       const g1 = v4MappedMatch[1].padStart(4, "0");
-      const g2 = v4MappedMatch[2].padStart(4, "0");
       const a = parseInt(g1.slice(0, 2), 16);
       const b = parseInt(g1.slice(2, 4), 16);
       if (a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0) return false;

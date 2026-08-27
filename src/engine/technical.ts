@@ -295,7 +295,6 @@ export function calculateEV(probs: [number, number, number], direction: number):
 // ─── Layer 8: Risk Management ────────────────────────────────────
 
 const RISK_BUDGET = 0.01; // 1% per trade
-const SAFETY_MARGIN_MIN = 3.0;
 const MAX_LEVERAGE_CAP = 10.0;
 
 export function calculateRisk(returns: number[], account: number = 10000): RiskResult {

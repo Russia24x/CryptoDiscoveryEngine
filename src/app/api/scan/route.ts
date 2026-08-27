@@ -32,11 +32,14 @@ async function runScan(): Promise<ScanResponse> {
       ),
     );
 
-    // Provider order by priority: binance (5), defillama (10), coingecko (20)
-    // lists[0] = binance, lists[1] = defillama, lists[2] = coingecko
-    const binance = lists[0] ?? [];
-    const dl = lists[1] ?? [];
-    const cg = lists[2] ?? [];
+    // Provider lookup BY SLUG, not array position. Positional indexing
+    // (lists[0]=binance …) silently corrupted the merge whenever a provider
+    // with a lower priority number was registered.
+    const bySlug = new Map<string, typeof lists[number]>();
+    providers.forEach((p, i) => bySlug.set(p.meta.slug, lists[i] ?? []));
+    const binance = bySlug.get("binance") ?? [];
+    const dl = bySlug.get("defillama") ?? [];
+    const cg = bySlug.get("coingecko") ?? [];
 
     // Build a merged map keyed by symbol. Merge by priority:
     // Binance provides real-time price + volume.

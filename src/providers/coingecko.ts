@@ -39,7 +39,7 @@ export const coingeckoProvider: DataProvider = {
     categories: ["market", "supply"],
     priority: 20,
   },
-  isAvailable(_: ProviderContext) {
+  isAvailable() {
     return true;
   },
   async listProtocols(ctx: ProviderContext): Promise<ProtocolSummary[]> {

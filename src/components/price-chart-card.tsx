@@ -79,7 +79,7 @@ export function PriceChartCard({ symbol }: { symbol: string }) {
     retry: false,
   });
 
-  const candles = data?.candles ?? [];
+  const candles = useMemo(() => data?.candles ?? [], [data]);
   const summary = data?.summary;
 
   // Chart geometry
@@ -167,9 +167,7 @@ export function PriceChartCard({ symbol }: { symbol: string }) {
 
   const hovered = hoverIdx !== null ? candles[hoverIdx] : null;
   const isUp = (summary?.changePct ?? 0) >= 0;
-  const changeColor = isUp ? "text-emerald-500" : "text-red-500";
   const strokeColor = isUp ? "rgb(16 185 129)" : "rgb(244 63 94)"; // emerald-500 / red-500
-  const fillColor = isUp ? "rgba(16,185,129,0.15)" : "rgba(244,63,94,0.15)";
 
   return (
     <Card>

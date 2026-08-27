@@ -101,7 +101,7 @@ export const binanceProvider: DataProvider = {
     categories: ["market", "realtime"],
     priority: 5, // highest priority — real-time
   },
-  isAvailable(_: ProviderContext) {
+  isAvailable() {
     return true; // key-less
   },
   async listProtocols(ctx: ProviderContext): Promise<ProtocolSummary[]> {
@@ -133,7 +133,6 @@ export const binanceProvider: DataProvider = {
     const t = tickers.get(symbol.toUpperCase());
     if (!t) return null;
     const price = parseFloat(t.lastPrice);
-    const volume24h = parseFloat(t.quoteVolume);
     return {
       symbol: symbol.toUpperCase(),
       name: symbol.toUpperCase(),

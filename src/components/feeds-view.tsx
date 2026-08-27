@@ -5,8 +5,6 @@ import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
-
 import {
   Newspaper,
   Rss,
@@ -25,7 +23,6 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/format";
-import { toast } from "sonner";
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -113,21 +110,11 @@ export function FeedsView({ onGoToSettings }: { onGoToSettings?: () => void }) {
     },
   });
 
-  const deleteFeed = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await fetch(`/api/feeds?id=${id}`, { method: "DELETE" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["feeds"] });
-      qc.invalidateQueries({ queryKey: ["feed-live"] });
-      toast.success(t("settings.removed"));
-    },
-    onError: (e) => toast.error(`${t("settings.removeFailed")}: ${e instanceof Error ? e.message : e}`),
-  });
+  // NOTE: the deleteFeed mutation that used to live here was dead code —
+  // feed deletion is owned by settings-view (single source of truth).
 
-  const sources = feedData?.sources ?? [];
-  const allItems = itemsData?.items ?? [];
+  const sources = useMemo(() => feedData?.sources ?? [], [feedData]);
+  const allItems = useMemo(() => itemsData?.items ?? [], [itemsData]);
 
   const items = useMemo(() => {
     const filtered = filter === "all" ? allItems : allItems.filter((i) => i.sourceKind === filter);

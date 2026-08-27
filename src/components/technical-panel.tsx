@@ -309,7 +309,10 @@ function FeatureRow({ label, value, hint }: { label: string; value: string; hint
   return (
     <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-2.5 py-1.5">
       <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="font-mono text-xs font-semibold">{value}</span>
+      <span className="flex items-baseline gap-1.5">
+        {hint && <span className="text-[10px] font-normal text-muted-foreground/70">{hint}</span>}
+        <span className="font-mono text-xs font-semibold">{value}</span>
+      </span>
     </div>
   );
 }

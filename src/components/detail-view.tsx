@@ -439,7 +439,7 @@ export function DetailView({
             <CardContent>
               <div className="grid gap-2 sm:grid-cols-2 max-h-96 overflow-y-auto scroll-thin pe-1">
                 {data?.evidence.map((e) => (
-                  <EvidenceCard key={e.id} e={e} t={t} />
+                  <EvidenceCard key={e.id} e={e} />
                 ))}
               </div>
             </CardContent>
@@ -583,10 +583,8 @@ function SupplyRow({
 
 function EvidenceCard({
   e,
-  t,
 }: {
   e: DetailResp["evidence"][number];
-  t: ReturnType<typeof useTranslations>;
 }) {
   const gradeColor: Record<string, string> = {
     A: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",

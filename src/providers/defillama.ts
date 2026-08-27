@@ -52,7 +52,7 @@ export const defillamaProvider: DataProvider = {
     categories: ["tvl", "fees", "revenue"],
     priority: 10,
   },
-  isAvailable(_: ProviderContext) {
+  isAvailable() {
     return true; // key-less
   },
   async listProtocols(ctx: ProviderContext): Promise<ProtocolSummary[]> {

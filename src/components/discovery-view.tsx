@@ -43,7 +43,6 @@ import {
 import type { RankedRow } from "@/engine/ranking";
 import { cn, decisionClass, fmtScore, fmtUsd } from "@/lib/format";
 import { useLocalStorage } from "@/lib/use-local-storage";
-import { DecisionBadge } from "./decision-badge";
 import { Sparkline } from "./sparkline";
 
 interface TrendPoint {
