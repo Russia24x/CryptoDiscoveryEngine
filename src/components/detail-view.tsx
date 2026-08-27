@@ -83,8 +83,11 @@ export function DetailView({
   const c = result.components;
   // Detect stub RankedRow (from command palette) — all-zero scores mean
   // the real data hasn't loaded yet. Show skeleton instead of zero values.
+  // On a TERMINAL query error (e.g. symbol not in scan cache after a restart,
+  // /api/projects 404), stop skeletoning so the error banner can render —
+  // otherwise the skeleton spins forever and isError && !showLoading never fires.
   const isStub = !data && row.result.iaFinal === 0 && row.result.iaRaw === 0;
-  const showLoading = isLoading || isStub;
+  const showLoading = isLoading || (isStub && !isError);
 
   // Compare-set state (localStorage-backed, SSR-safe via useSyncExternalStore).
   const [compareSet, setCompareSet] = useLocalStorage<string[]>("compare-set", []);

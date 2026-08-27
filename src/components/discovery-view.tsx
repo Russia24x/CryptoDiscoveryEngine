@@ -101,13 +101,14 @@ export function DiscoveryView({
     placeholderData: (prev) => prev,
   });
 
-  // Fetch logos for all scanned symbols (batch, cached 1h)
+  // Fetch logos for all scanned symbols (single index call server-side, cached 1h)
   const logoSymbols = (data?.rows ?? []).map((r) => r.symbol);
+  const logoKey = logoSymbols.join(",");
   const { data: logosData } = useQuery<{ logos: Record<string, string | null> }>({
-    queryKey: ["logos", logoSymbols.slice(0, 20).join(",")],
+    queryKey: ["logos", logoKey],
     queryFn: async () => {
       if (!logoSymbols.length) return { logos: {} };
-      const r = await fetch(`/api/logos?symbols=${logoSymbols.slice(0, 20).join(",")}`);
+      const r = await fetch(`/api/logos?symbols=${encodeURIComponent(logoKey)}`);
       if (!r.ok) return { logos: {} };
       return r.json();
     },
@@ -168,11 +169,13 @@ export function DiscoveryView({
   // max IA final for relative bar scaling
   const maxIAFinal = Math.max(...sortedRows.map((r) => r.result.iaFinal), 1);
 
-  // Batch-fetch trends for filtered rows in one request. The trend API now
-  // accepts up to 100 symbols (matches scan's max). Previously we passed all
-  // rows including 100+ symbols which hit the 50-symbol cap and returned 400,
-  // leaving the Trend column silently empty.
-  const trendSymbols = filteredRows.map((r) => r.symbol);
+  // Batch-fetch trends in one request. Derived from sortedRows (stable across
+  // search/filter keystrokes) — NOT filteredRows. Deriving from filteredRows
+  // changed the queryKey on every keystroke, firing a POST /api/trend (up to
+  // 100 symbols, DB take:2000) per keypress. The response is a symbol-keyed
+  // map, so filtered rows simply look up their entry.
+  // The trend API accepts up to 100 symbols (matches scan's max).
+  const trendSymbols = sortedRows.map((r) => r.symbol);
   const cacheKey = [...trendSymbols].sort().join(",");
   const { data: trendData } = useQuery<{ trends: Record<string, TrendPoint[]> }>({
     queryKey: ["trends-batch", cacheKey],
@@ -192,11 +195,12 @@ export function DiscoveryView({
   const trendBySymbol = trendData?.trends ?? {};
 
   // Batch-fetch 7d price history for mini sparklines in the discovery table.
-  // Only fetches the top 10 visible rows to limit CoinPaprika API usage
-  // (free tier: 60 requests/hour). Cached 10 min on the client.
+  // Top 20 of the STABLE sort order (not the keystroke-volatile filtered view)
+  // to limit CoinPaprika API usage (free tier: 60 req/hour server-side cache 10 min).
+  // One stable request regardless of search/filter activity.
   const priceTopSymbols = useMemo(() => {
-    return filteredRows.slice(0, 10).map((r) => r.symbol);
-  }, [filteredRows]);
+    return sortedRows.slice(0, 20).map((r) => r.symbol);
+  }, [sortedRows]);
   const priceCacheKey = [...priceTopSymbols].sort().join(",");
   const { data: priceBatchData } = useQuery<{
     sparklines: Record<string, { changePct: number; closes: number[] } | null>;

@@ -59,19 +59,24 @@ export function SettingsView() {
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
 
-  const { data: provData, isLoading: provLoading } = useQuery<{ providers: ProviderRow[] }>({
+  const { data: provData, isLoading: provLoading, isError: provError } = useQuery<{ providers: ProviderRow[] }>({
     queryKey: ["providers"],
     queryFn: async () => {
       const r = await fetch("/api/providers");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
+    // Surface failures instead of silently rendering an empty list.
+    retry: 1,
   });
-  const { data: feedData } = useQuery<{ sources: FeedRow[] }>({
+  const { data: feedData, isError: feedError } = useQuery<{ sources: FeedRow[] }>({
     queryKey: ["feeds"],
     queryFn: async () => {
       const r = await fetch("/api/feeds");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
+    retry: 1,
   });
 
   const toggleProv = useMutation({
@@ -173,6 +178,11 @@ export function SettingsView() {
           {showAdd && <AddProviderForm onDone={() => setShowAdd(false)} />}
           {provLoading &&
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+          {provError && !provLoading && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              {t("settings.updateFailed")} — /api/providers
+            </div>
+          )}
           {!provLoading &&
             provData?.providers.map((p) => (
               <ProviderCard
@@ -200,7 +210,21 @@ export function SettingsView() {
           <CardDescription>{t("settings.feedsHint")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <FeedForm onAdd={(b) => addFeed.mutate(b)} />
+          <FeedForm
+            onAdd={async (b) => {
+              try {
+                await addFeed.mutateAsync(b);
+                return true;
+              } catch {
+                return false; // onError already toasted the reason
+              }
+            }}
+          />
+          {feedError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              {t("settings.updateFailed")} — /api/feeds
+            </div>
+          )}
           {feedData?.sources.map((f) => (
             <div
               key={f.id}
@@ -562,11 +586,12 @@ function AddProviderForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function FeedForm({ onAdd }: { onAdd: (b: { kind: string; name: string; address: string }) => void }) {
+function FeedForm({ onAdd }: { onAdd: (b: { kind: string; name: string; address: string }) => Promise<boolean> }) {
   const t = useTranslations();
   const [kind, setKind] = useState("rss");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div className="rounded-lg border border-dashed border-border/70 p-4">
@@ -602,11 +627,17 @@ function FeedForm({ onAdd }: { onAdd: (b: { kind: string; name: string; address:
         <Button
           size="sm"
           className="gap-2"
-          disabled={!name || !address}
-          onClick={() => {
-            onAdd({ kind, name, address });
-            setName("");
-            setAddress("");
+          disabled={!name || !address || submitting}
+          onClick={async () => {
+            setSubmitting(true);
+            // Clear inputs ONLY on success — clearing before the POST resolves
+            // destroyed the user's input whenever the request failed.
+            const ok = await onAdd({ kind, name, address });
+            setSubmitting(false);
+            if (ok) {
+              setName("");
+              setAddress("");
+            }
           }}
         >
           <Plus className="h-4 w-4" />

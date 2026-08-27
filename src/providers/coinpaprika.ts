@@ -78,8 +78,32 @@ export interface CoinPaprikaEvent {
 
 const PAPRIKA_BASE = "https://api.coinpaprika.com/v1";
 
-// In-memory cache for coin IDs (symbol → paprika_id)
-const idCache = new Map<string, string>();
+// In-memory cache for coin IDs (symbol → paprika_id), TTL + size-capped.
+// Without a TTL a wrong/stale mapping persists forever; without a cap the
+// map grows unbounded with unique symbols (symbol is client-supplied input).
+const ID_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const ID_CACHE_MAX = 500;
+const idCache = new Map<string, { id: string; expiresAt: number }>();
+
+function idCacheGet(sym: string): string | null {
+  const entry = idCache.get(sym);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    idCache.delete(sym);
+    return null;
+  }
+  return entry.id;
+}
+
+function idCacheSet(sym: string, id: string): void {
+  // Simple size cap: evict oldest entries when full (Map preserves insertion order).
+  while (idCache.size >= ID_CACHE_MAX) {
+    const oldest = idCache.keys().next().value;
+    if (oldest === undefined) break;
+    idCache.delete(oldest);
+  }
+  idCache.set(sym, { id, expiresAt: Date.now() + ID_CACHE_TTL_MS });
+}
 
 /** Search CoinPaprika for a coin by symbol. Returns the paprika ID. */
 export async function findCoinId(
@@ -87,7 +111,8 @@ export async function findCoinId(
   ctx: { fetch?: typeof fetch } = {},
 ): Promise<string | null> {
   const sym = symbol.toUpperCase();
-  if (idCache.has(sym)) return idCache.get(sym)!;
+  const cachedId = idCacheGet(sym);
+  if (cachedId) return cachedId;
 
   // Circuit breaker: skip CoinPaprika entirely if recently rate-limited.
   // This prevents 10+ wasted API calls per batch request when rate-limited.
@@ -114,7 +139,7 @@ export async function findCoinId(
     (c) => c.symbol.toUpperCase() === sym,
   );
   if (match) {
-    idCache.set(sym, match.id);
+    idCacheSet(sym, match.id);
     return match.id;
   }
   return null;
