@@ -1,6 +1,14 @@
 # CryptoSieve — Deep Audit Round 2 (Code / Performance / Architecture)
 
 > Generated: 2026-08-27 — Senior Developer session 2
+>
+> **✅ STATUS (same session, post-fix):** The stabilization pass is DONE.
+> All P1 fixes and most P2s are applied and pushed (commits `7afce60`,
+> `a0f0149`, `31f9a00`, `784b5c5`). Deferred items are listed at the bottom.
+> Final gates: tsc 0 errors · eslint 0/0 (was 23 warnings) · engine:check
+> 59/59 · `next build` pass · 45 deps + 33 dead UI components removed
+> (−5,324 lines).
+>
 > Scope: full-repo deep audit — code quality & security, performance, architecture &
 > infrastructure, plus bug/typo/wrong-path/wrong-engineering sweep.
 > Method: fresh clone at `16ff5c2`, all quality gates re-verified green
@@ -231,7 +239,19 @@ hide future signal; clean them and tighten the config later.
 | 10 | coinpaprika idCache TTL+cap; settings r.ok; FeedForm onSuccess | providers/UI | low |
 | 11 | eslint unused-vars cleanup | 6 files | low |
 
-Deferred (proposal needed): unified error envelope (C6), UI dedup hooks (C7),
-coin-info defillamaSlug data flow (A7), `safeJsonFetch` side-channel rework
-(A8) — each is a small refactor but touches many routes; do them as follow-up
-commits, not mixed into the stabilization pass.
+Deferred (proposal needed — follow-up work, NOT regressions): unified
+error envelope (C6 — partially done: the five leaking routes now return
+generic codes), UI dedup hooks (C7 — deleteFeed dead copy removed),
+coin-info defillamaSlug data flow (A7), `safeJsonFetch` side-channel
+rework (A8 — logos no longer uses it; remaining users are per-request
+sequential so the race window is small). Each is a small refactor that
+touches many routes; do them as isolated follow-up commits.
+
+## Stabilization Result (applied this session)
+
+| Commit | Content |
+|--------|---------|
+| `7afce60` | This audit report |
+| `a0f0149` | SSRF initial-URL validation + shared url-safety lib + redirect-check fix + query-param validation + 500-leak closure + trend orderBy fix |
+| `31f9a00` | Logos N+1 → single /v1/coins index + circuit breaker; discovery refetch-storm fix; detail-view infinite skeleton; dead exports → lib/provider-auth.ts; coinpaprika idCache TTL+cap; settings r.ok + FeedForm onSuccess |
+| `784b5c5` | 45 unused deps removed, 33 dead UI components removed, template leftovers purged, package.json renamed, RULES.md paths fixed, .env.example added, scan slug lookup, eslint 0/0 |
